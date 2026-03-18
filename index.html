@@ -1722,6 +1722,15 @@ function renderPanelBody(card) {
   if (!d.questions || d.questions.length === 0) html += '<div style="font-size:13px;color:var(--text-muted);padding:8px 0;">暂无待确认问题</div>';
   html += '</div></div>';
 
+  // Notes section
+  html += '<div class="panel-section">'
+       + '<div class="panel-section-header">'
+       + '<div class="panel-section-title"><span class="section-tag" style="background:#e2e8f0;color:#475569;">[笔记]</span> 笔记</div>'
+       + '</div>'
+       + '<textarea class="editable-area" rows="4" placeholder="自由记录任何备注、想法、讨论内容..."'
+       + ' oninput="updateNotes(\'' + card.id + '\', this.value)">' + escapeHtml(d.notes || '') + '</textarea>'
+       + '</div>';
+
   body.innerHTML = html;
   body.querySelectorAll('.item-text').forEach(autoResize);
   body.querySelectorAll('.editable-area').forEach(autoResize);
@@ -1787,6 +1796,11 @@ function findNonWeeklyCard(id) {
 function updateKnown(cardId, value) {
   var card = findCard(cardId) || findNonWeeklyCard(cardId);
   if (card) { card.details.known = value; save(); }
+}
+
+function updateNotes(cardId, value) {
+  var card = findCard(cardId) || findNonWeeklyCard(cardId);
+  if (card) { if (!card.details) card.details = {}; card.details.notes = value; save(); }
 }
 
 function updateItemText(cardId, listType, idx, value) {
