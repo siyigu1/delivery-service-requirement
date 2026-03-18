@@ -1394,35 +1394,83 @@ let resizeState = null; // { cardId, phaseId, rowIdx, startX, startSpan, gridEl 
 // DATA MIGRATION
 // ============================
 // Convert old column-based rows to new flat cards array
+// Firebase can convert arrays to objects with numeric keys; fix that
+function ensureArray(val) {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'object') {
+    var arr = [];
+    Object.keys(val).forEach(function(k) { arr.push(val[k]); });
+    return arr;
+  }
+  return [];
+}
+
 function migrateData(d) {
   if (!d || !d.phases) return d;
+  // Ensure roles array exists
+  if (!d.roles) {
+    d.roles = [
+      { id: "admin", label: "团长", color: "admin" },
+      { id: "user", label: "团员", color: "user" },
+      { id: "volunteer", label: "义工", color: "volunteer" },
+      { id: "supplier", label: "货源", color: "supplier" }
+    ];
+  }
+  d.roles = ensureArray(d.roles);
+  if (!d.nonWeeklyTasks) d.nonWeeklyTasks = [];
+  d.nonWeeklyTasks = ensureArray(d.nonWeeklyTasks);
+  d.phases = ensureArray(d.phases);
   d.phases.forEach(function(phase) {
     // Remove spanBars
     delete phase.spanBars;
+    phase.rows = ensureArray(phase.rows);
     phase.rows.forEach(function(row) {
       if (row.columns && !row.cards) {
         // Migrate from columns to flat cards
+        var columns = ensureArray(row.columns);
         var cards = [];
-        for (var c = 0; c < row.columns.length; c++) {
-          var col = row.columns[c];
-          if (!col) continue;
+        for (var c = 0; c < columns.length; c++) {
+          var col = ensureArray(columns[c]);
           for (var i = 0; i < col.length; i++) {
             var card = col[i];
-            if (!card.colIdx && card.colIdx !== 0) card.colIdx = c;
+            if (!card) continue;
+            if (card.colIdx === undefined && card.colIdx !== 0) card.colIdx = c;
             if (!card.spanDays) card.spanDays = 1;
+            if (card.details) {
+              card.details.pains = ensureArray(card.details.pains);
+              card.details.keeps = ensureArray(card.details.keeps);
+              card.details.questions = ensureArray(card.details.questions);
+            }
             cards.push(card);
           }
         }
         row.cards = cards;
         delete row.columns;
-      } else if (row.cards) {
-        // Ensure all cards have colIdx and spanDays
+      } else {
+        row.cards = ensureArray(row.cards);
         row.cards.forEach(function(card) {
+          if (!card) return;
           if (card.colIdx === undefined) card.colIdx = 0;
           if (!card.spanDays) card.spanDays = 1;
+          if (card.details) {
+            card.details.pains = ensureArray(card.details.pains);
+            card.details.keeps = ensureArray(card.details.keeps);
+            card.details.questions = ensureArray(card.details.questions);
+          }
         });
+        // Remove any null/undefined entries
+        row.cards = row.cards.filter(function(c) { return !!c; });
       }
     });
+  });
+  // Ensure nonWeeklyTasks details are arrays too
+  d.nonWeeklyTasks.forEach(function(task) {
+    if (task && task.details) {
+      task.details.pains = ensureArray(task.details.pains);
+      task.details.keeps = ensureArray(task.details.keeps);
+      task.details.questions = ensureArray(task.details.questions);
+    }
   });
   return d;
 }
