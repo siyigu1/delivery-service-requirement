@@ -1569,10 +1569,10 @@ function save() {
 // Given a list of cards with colIdx and spanDays, compute gridRow for each
 // Returns an array of { card, gridRow, gridCol, gridSpan }
 function computeRowAllocations(cards) {
-  // Sort cards by colIdx, then by their order in the array (stable)
-  var sorted = cards.slice().sort(function(a, b) {
-    return (a.colIdx || 0) - (b.colIdx || 0);
-  });
+  // Process cards in their original array order (order = intended visual sequence)
+  // This ensures that cards added later go below existing cards,
+  // and spanning cards properly block cells for cards that follow
+  var sorted = cards.slice();
 
   // Track which (row, col) cells are occupied
   // occupied[row][col] = true
