@@ -248,30 +248,21 @@
     transform: translateY(-2px);
   }
 
-  .activity.dragging { opacity: 0.4; transform: scale(0.95); }
+  .activity.dragging { opacity: 0.15; transform: scale(0.95); height: 0; padding: 0; margin: 0; overflow: hidden; border: none; }
 
   .activity.admin { background: var(--admin-bg); border-color: var(--admin-border); }
   .activity.user { background: var(--user-bg); border-color: var(--user-border); }
   .activity.volunteer { background: var(--volunteer-bg); border-color: var(--volunteer-border); }
   .activity.supplier { background: var(--supplier-bg); border-color: var(--supplier-border); }
 
-  .activity-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    font-weight: 700;
-    margin-bottom: 8px;
-    color: white;
+  /* Drop placeholder */
+  .drop-placeholder {
+    border: 2px dashed var(--admin);
+    border-radius: 12px;
+    background: rgba(37, 99, 235, 0.05);
+    transition: height 0.2s ease;
+    min-height: 20px;
   }
-
-  .admin .activity-icon { background: var(--admin); }
-  .user .activity-icon { background: var(--user); }
-  .volunteer .activity-icon { background: var(--volunteer); }
-  .supplier .activity-icon { background: var(--supplier); }
 
   .activity-title {
     font-size: 14px;
@@ -462,23 +453,6 @@
   .nw-card.volunteer { background: var(--volunteer-bg); border-color: var(--volunteer-border); }
   .nw-card.supplier { background: var(--supplier-bg); border-color: var(--supplier-border); }
 
-  .nw-card-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    font-weight: 700;
-    margin-bottom: 8px;
-    color: white;
-  }
-
-  .nw-card.admin .nw-card-icon { background: var(--admin); }
-  .nw-card.user .nw-card-icon { background: var(--user); }
-  .nw-card.volunteer .nw-card-icon { background: var(--volunteer); }
-  .nw-card.supplier .nw-card-icon { background: var(--supplier); }
 
   .nw-card-title {
     font-size: 14px;
@@ -1413,10 +1387,8 @@ function render() {
                   + ' draggable="true" data-card-id="' + card.id + '"'
                   + ' onclick="openPanel(\'' + card.id + '\')"'
                   + ' ondragstart="onDragStart(event, \'' + phase.id + '\', ' + rowIdx + ', ' + colIdx + ', ' + cardIdx + ')"'
-                  + ' ondragover="onCardDragOver(event)" ondragleave="onCardDragLeave(event)" ondrop="onCardDrop(event, \'' + phase.id + '\', ' + rowIdx + ', ' + colIdx + ', ' + cardIdx + ')"'
                   + ' ondragend="onDragEnd(event)">'
                   + '<div class="drag-handle">///</div>'
-                  + '<div class="activity-icon">' + (card.icon || card.title.charAt(0)) + '</div>'
                   + '<div class="activity-title">' + card.title + '</div>'
                   + '<div class="activity-desc">' + card.desc + '</div>'
                   + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
@@ -1467,7 +1439,6 @@ function renderNonWeekly() {
   tasks.forEach(function(task) {
     var isSelected = selectedCardId === task.id;
     html += '<div class="nw-card ' + task.role + (isSelected ? ' selected' : '') + '" onclick="openPanel(\'' + task.id + '\')">'
-          + '<div class="nw-card-icon">' + (task.icon || task.title.charAt(0)) + '</div>'
           + '<div class="nw-card-title">' + task.title + '</div>'
           + '<div class="nw-card-desc">' + task.desc + '</div>'
           + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
@@ -1754,30 +1725,121 @@ function addNonWeeklyTask() {
 // ============================
 // DRAG AND DROP
 // ============================
+var dropTargetInfo = null; // { phaseId, rowIdx, colIdx, insertIdx }
+
 function onDragStart(e, phaseId, rowIdx, colIdx, cardIdx) {
   dragSourceInfo = { phaseId: phaseId, rowIdx: rowIdx, colIdx: colIdx, cardIdx: cardIdx };
-  e.target.classList.add('dragging');
+  // Delay adding class so the drag image captures the card properly
+  setTimeout(function() { e.target.classList.add('dragging'); }, 0);
   e.dataTransfer.effectAllowed = 'move';
   e.dataTransfer.setData('text/plain', '');
 }
 
 function onDragEnd(e) {
   e.target.classList.remove('dragging');
-  document.querySelectorAll('.day-column').forEach(function(el) { el.classList.remove('drag-over'); });
+  clearPlaceholder();
   dragSourceInfo = null;
+  dropTargetInfo = null;
 }
 
 function onDragOver(e) {
   e.preventDefault();
   e.dataTransfer.dropEffect = 'move';
-  e.currentTarget.classList.add('drag-over');
+  if (!dragSourceInfo) return;
+
+  var col = e.currentTarget;
+  var phaseId = col.dataset.phase;
+  var rowIdx = parseInt(col.dataset.row);
+  var colIdx = parseInt(col.dataset.col);
+
+  // Find insert position based on mouse Y relative to cards
+  var cards = col.querySelectorAll('.activity');
+  var insertIdx = cards.length; // default: end
+  for (var i = 0; i < cards.length; i++) {
+    var rect = cards[i].getBoundingClientRect();
+    if (e.clientY < rect.top + rect.height / 2) {
+      insertIdx = i;
+      break;
+    }
+  }
+
+  // Adjust index: if dragging within same column and source is before insert, account for removal
+  var sameCol = (dragSourceInfo.phaseId === phaseId &&
+                 dragSourceInfo.rowIdx === rowIdx &&
+                 dragSourceInfo.colIdx === colIdx);
+  var adjustedIdx = insertIdx;
+  if (sameCol && dragSourceInfo.cardIdx < insertIdx) {
+    adjustedIdx--;
+  }
+  // Skip if placeholder is already in the right place
+  if (dropTargetInfo &&
+      dropTargetInfo.phaseId === phaseId &&
+      dropTargetInfo.rowIdx === rowIdx &&
+      dropTargetInfo.colIdx === colIdx &&
+      dropTargetInfo.insertIdx === adjustedIdx) {
+    return;
+  }
+
+  dropTargetInfo = { phaseId: phaseId, rowIdx: rowIdx, colIdx: colIdx, insertIdx: adjustedIdx };
+  showPlaceholder(col, insertIdx, sameCol ? dragSourceInfo.cardIdx : -1);
 }
 
-function onDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+function onDragLeave(e) {
+  // Only clear if we actually left the column (not entering a child)
+  if (!e.currentTarget.contains(e.relatedTarget)) {
+    clearPlaceholderInColumn(e.currentTarget);
+  }
+}
+
+function showPlaceholder(column, insertIdx, skipIdx) {
+  // Remove any existing placeholders
+  document.querySelectorAll('.drop-placeholder').forEach(function(el) { el.remove(); });
+
+  var cards = column.querySelectorAll('.activity');
+  var placeholder = document.createElement('div');
+  placeholder.className = 'drop-placeholder';
+
+  // Measure card height for placeholder
+  var refCard = column.querySelector('.activity:not(.dragging)');
+  if (refCard) {
+    placeholder.style.height = refCard.offsetHeight + 'px';
+  } else {
+    placeholder.style.height = '60px';
+  }
+
+  // Find the reference node to insert before
+  // Filter out dragging card and arrows
+  var childNodes = [];
+  for (var i = 0; i < column.children.length; i++) {
+    var child = column.children[i];
+    if (child.classList.contains('activity') || child.classList.contains('arrow-down')) {
+      childNodes.push(child);
+    }
+  }
+
+  // Map insertIdx to actual DOM position (accounting for arrows between cards)
+  var activityNodes = column.querySelectorAll('.activity');
+  if (insertIdx >= activityNodes.length) {
+    // Insert before the add button
+    var addBtn = column.querySelector('.add-step-btn');
+    column.insertBefore(placeholder, addBtn);
+  } else {
+    column.insertBefore(placeholder, activityNodes[insertIdx]);
+  }
+}
+
+function clearPlaceholder() {
+  document.querySelectorAll('.drop-placeholder').forEach(function(el) { el.remove(); });
+}
+
+function clearPlaceholderInColumn(column) {
+  column.querySelectorAll('.drop-placeholder').forEach(function(el) { el.remove(); });
+  dropTargetInfo = null;
+}
 
 function onDrop(e) {
   e.preventDefault();
-  e.currentTarget.classList.remove('drag-over');
+  clearPlaceholder();
   if (!dragSourceInfo) return;
 
   var tgtPhaseId = e.currentTarget.dataset.phase;
@@ -1786,70 +1848,28 @@ function onDrop(e) {
 
   var srcPhase = data.phases.find(function(p) { return p.id === dragSourceInfo.phaseId; });
   var srcCol = srcPhase.rows[dragSourceInfo.rowIdx].columns[dragSourceInfo.colIdx];
-  var card = srcCol.splice(dragSourceInfo.cardIdx, 1)[0];
-
-  var tgtPhase = data.phases.find(function(p) { return p.id === tgtPhaseId; });
-  if (!tgtPhase.rows[tgtRowIdx].columns[tgtColIdx]) tgtPhase.rows[tgtRowIdx].columns[tgtColIdx] = [];
-  // Drop on column background = append to end
-  tgtPhase.rows[tgtRowIdx].columns[tgtColIdx].push(card);
-
-  dragSourceInfo = null;
-  save(); render(); renderNonWeekly();
-  showToast("已移动「" + card.title + "」");
-}
-
-function onCardDragOver(e) {
-  e.preventDefault();
-  e.stopPropagation();
-  e.dataTransfer.dropEffect = 'move';
-  var card = e.currentTarget;
-  var rect = card.getBoundingClientRect();
-  var midY = rect.top + rect.height / 2;
-  // Show visual indicator for drop position
-  card.style.borderTop = e.clientY < midY ? '3px solid var(--admin)' : '';
-  card.style.borderBottom = e.clientY >= midY ? '3px solid var(--admin)' : '';
-}
-
-function onCardDragLeave(e) {
-  e.currentTarget.style.borderTop = '';
-  e.currentTarget.style.borderBottom = '';
-}
-
-function onCardDrop(e, tgtPhaseId, tgtRowIdx, tgtColIdx, tgtCardIdx) {
-  e.preventDefault();
-  e.stopPropagation();
-  e.currentTarget.style.borderTop = '';
-  e.currentTarget.style.borderBottom = '';
-  document.querySelectorAll('.day-column').forEach(function(el) { el.classList.remove('drag-over'); });
-  if (!dragSourceInfo) return;
-
-  // Determine insert position based on mouse position
-  var rect = e.currentTarget.getBoundingClientRect();
-  var insertBefore = e.clientY < (rect.top + rect.height / 2);
-
-  var srcPhase = data.phases.find(function(p) { return p.id === dragSourceInfo.phaseId; });
-  var srcCol = srcPhase.rows[dragSourceInfo.rowIdx].columns[dragSourceInfo.colIdx];
 
   var tgtPhase = data.phases.find(function(p) { return p.id === tgtPhaseId; });
   if (!tgtPhase.rows[tgtRowIdx].columns[tgtColIdx]) tgtPhase.rows[tgtRowIdx].columns[tgtColIdx] = [];
   var tgtCol = tgtPhase.rows[tgtRowIdx].columns[tgtColIdx];
 
-  // Same column reorder
-  var sameCol = (dragSourceInfo.phaseId === tgtPhaseId &&
-                 dragSourceInfo.rowIdx === tgtRowIdx &&
-                 dragSourceInfo.colIdx === tgtColIdx);
-
-  var card = srcCol.splice(dragSourceInfo.cardIdx, 1)[0];
-
-  // Adjust target index if same column and source was before target
-  var insertIdx = insertBefore ? tgtCardIdx : tgtCardIdx + 1;
-  if (sameCol && dragSourceInfo.cardIdx < tgtCardIdx) {
-    insertIdx--;
+  // Determine insert position
+  var insertIdx = tgtCol.length; // default: end
+  if (dropTargetInfo &&
+      dropTargetInfo.phaseId === tgtPhaseId &&
+      dropTargetInfo.rowIdx === tgtRowIdx &&
+      dropTargetInfo.colIdx === tgtColIdx) {
+    insertIdx = dropTargetInfo.insertIdx;
   }
 
+  // Remove card from source
+  var card = srcCol.splice(dragSourceInfo.cardIdx, 1)[0];
+
+  // Insert at target position
   tgtCol.splice(insertIdx, 0, card);
 
   dragSourceInfo = null;
+  dropTargetInfo = null;
   save(); render(); renderNonWeekly();
   showToast("已移动「" + card.title + "」");
 }
