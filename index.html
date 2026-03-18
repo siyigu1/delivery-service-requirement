@@ -201,30 +201,14 @@
   .connector-dot:nth-child(6) { border-color: var(--volunteer); }
   .connector-dot:nth-child(7) { border-color: var(--line); background: var(--bg); }
 
-  /* Activity columns */
-  .activities-row {
+  /* Phase cards grid - uses CSS grid for spanning */
+  .phase-grid {
     grid-column: 1 / -1;
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 12px;
+    gap: 10px 12px;
     padding: 0 8px;
     margin-top: 8px;
-  }
-
-  .day-column {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    min-height: 40px;
-    border-radius: 12px;
-    padding: 4px;
-    transition: background 0.2s;
-  }
-
-  .day-column.drag-over {
-    background: rgba(37, 99, 235, 0.06);
-    outline: 2px dashed var(--admin-border);
-    outline-offset: -2px;
   }
 
   /* Activity cards */
@@ -338,26 +322,61 @@
     pointer-events: none;
   }
 
-  /* Span bars */
-  .span-bar {
+  /* Resize handle */
+  .resize-handle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 8px;
+    height: 100%;
+    cursor: col-resize;
+    opacity: 0;
+    transition: opacity 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+  }
+
+  .resize-handle::before {
+    content: '';
+    width: 3px;
+    height: 24px;
+    border-radius: 2px;
+    background: var(--line);
+  }
+
+  .activity:hover .resize-handle { opacity: 1; }
+
+  .activity.resizing {
+    z-index: 10;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  }
+
+  .activity.resizing .resize-handle { opacity: 1; }
+  .activity.resizing .resize-handle::before { background: var(--admin); }
+
+  /* Day column drop targets (rendered in add-step row) */
+  .add-step-row {
     grid-column: 1 / -1;
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 12px;
     padding: 0 8px;
-    margin-top: 12px;
+    margin-top: 4px;
   }
 
-  .span-label {
-    border-radius: 8px;
-    padding: 10px 14px;
-    font-size: 12px;
-    font-weight: 500;
-    text-align: center;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
+  .day-drop-zone {
+    min-height: 40px;
+    border-radius: 12px;
+    padding: 4px;
+    transition: background 0.2s;
+  }
+
+  .day-drop-zone.drag-over {
+    background: rgba(37, 99, 235, 0.06);
+    outline: 2px dashed var(--admin-border);
+    outline-offset: -2px;
   }
 
   /* Phase dividers */
@@ -928,7 +947,7 @@ const db = firebase.database();
 const dataRef = db.ref('tuangou-flow');
 
 // ============================
-// DEFAULT DATA
+// DEFAULT DATA (flat cards array per row)
 // ============================
 const DEFAULT_DATA = {
   phases: [
@@ -937,104 +956,100 @@ const DEFAULT_DATA = {
       label: "阶段一 -- 开团与下单",
       rows: [
         {
-          columns: [
-            [],
-            [
-              {
-                id: "open-round",
-                icon: "开", title: "开团",
-                desc: "上架本周商品、设置开团/截团时间、发布开团公告",
-                role: "admin", roleLabel: "团长",
-                details: {
-                  known: "-- 团长在后台创建本周团购，设置开团/截团时间\n-- 从商品库中选择本周商品（支持搜索、一键复制上周商品）\n-- 可新增商品到商品库\n-- 支持定时自动开团/截团\n-- 开团后发布通知到微信群",
-                  pains: [
-                    { text: "手动在微信群接龙下单，容易遗漏、统计困难", priority: "P0", note: "核心痛点" },
-                    { text: "商品上架流程的具体痛点？", priority: "P1", note: "待确认" }
-                  ],
-                  keeps: [
-                    { text: "微信群发通知文案（开团公告、商品概览）", priority: "P0", note: "小程序自动生成，团长复制" }
-                  ],
-                  questions: [
-                    { text: "还有哪些现有做法团长们希望保留？", resolved: false },
-                    { text: "商品分类列表是否完整？还有其他分类吗？", resolved: false }
-                  ]
-                }
-              },
-              {
-                id: "notify-open",
-                icon: "通", title: "发布通知",
-                desc: "生成开团文案，复制到微信群",
-                role: "admin", roleLabel: "团长",
-                details: {
-                  known: "-- 小程序后台自动生成开团文案\n-- 包含本周商品概览 + 小程序码/链接\n-- 团长复制文案发到微信群",
-                  pains: [],
-                  keeps: [
-                    { text: "通知先发到微信群（用户习惯在群里看通知）", priority: "P0", note: "" }
-                  ],
-                  questions: [
-                    { text: "微信群通知的格式/风格有什么偏好？", resolved: false },
-                    { text: "团员最常错过哪类通知？", resolved: false }
-                  ]
-                }
+          cards: [
+            {
+              id: "open-round",
+              colIdx: 1, spanDays: 1,
+              icon: "开", title: "开团",
+              desc: "上架本周商品、设置开团/截团时间、发布开团公告",
+              role: "admin", roleLabel: "团长",
+              details: {
+                known: "-- 团长在后台创建本周团购，设置开团/截团时间\n-- 从商品库中选择本周商品（支持搜索、一键复制上周商品）\n-- 可新增商品到商品库\n-- 支持定时自动开团/截团\n-- 开团后发布通知到微信群",
+                pains: [
+                  { text: "手动在微信群接龙下单，容易遗漏、统计困难", priority: "P0", note: "核心痛点" },
+                  { text: "商品上架流程的具体痛点？", priority: "P1", note: "待确认" }
+                ],
+                keeps: [
+                  { text: "微信群发通知文案（开团公告、商品概览）", priority: "P0", note: "小程序自动生成，团长复制" }
+                ],
+                questions: [
+                  { text: "还有哪些现有做法团长们希望保留？", resolved: false },
+                  { text: "商品分类列表是否完整？还有其他分类吗？", resolved: false }
+                ]
               }
-            ],
-            [
-              {
-                id: "place-order",
-                icon: "购", title: "团员下单",
-                desc: "浏览商品、加入购物车、选配送方式、提交订单",
-                role: "user", roleLabel: "团员",
-                details: {
-                  known: "-- 团员浏览本周商品，按分类筛选\n-- 选择数量加入购物车\n-- 选择配送方式（团购到镇/固定取货点/直送到家）\n-- 填写必要信息（根据配送方式不同）\n-- 提交订单\n-- 截团前可自由修改/取消订单",
-                  pains: [
-                    { text: "微信接龙格式不统一，团长需人工整理", priority: "P0", note: "" },
-                    { text: "团员看不到实时库存/已售数量", priority: "P1", note: "待确认是否需要" }
-                  ],
-                  keeps: [],
-                  questions: [
-                    { text: "团员下单时还有哪些不方便的地方？", resolved: false },
-                    { text: "是否需要显示实时库存/已售数量？", resolved: false }
-                  ]
-                }
-              },
-              {
-                id: "wishlist-signup",
-                icon: "愿", title: "Wishlist / 报名",
-                desc: "提交想买的商品、报名本镇收货",
-                role: "user", roleLabel: "团员",
-                details: {
-                  known: "-- 团员可提交想要的商品（从商品库选择或自由填写）\n-- 团长在截团后查看并尽量满足\n-- Wishlist 状态：待处理 -> 已加入订单 / 无法满足\n-- 团员可报名「本周我家收货」，提供收货地址\n-- 同镇其他团员下单时可看到取货地址",
-                  pains: [],
-                  keeps: [],
-                  questions: [
-                    { text: "Wishlist 使用频率高吗？", resolved: false },
-                    { text: "收货报名的激励机制？如免运费？", resolved: false }
-                  ]
-                }
-              },
-              {
-                id: "close-round",
-                icon: "截", title: "截团",
-                desc: "手动或定时截团，停止接单",
-                role: "admin", roleLabel: "团长",
-                details: {
-                  known: "-- 团长手动截团或设置定时自动截团\n-- 截团后团员不能再下新单\n-- 截团后修改/取消订单需团长批准",
-                  pains: [],
-                  keeps: [
-                    { text: "截团前发送提醒（还有 X 小时截团）", priority: "P1", note: "" }
-                  ],
-                  questions: [
-                    { text: "截团时间是否固定？比如每次都是周三晚？", resolved: false }
-                  ]
-                }
+            },
+            {
+              id: "notify-open",
+              colIdx: 1, spanDays: 1,
+              icon: "通", title: "发布通知",
+              desc: "生成开团文案，复制到微信群",
+              role: "admin", roleLabel: "团长",
+              details: {
+                known: "-- 小程序后台自动生成开团文案\n-- 包含本周商品概览 + 小程序码/链接\n-- 团长复制文案发到微信群",
+                pains: [],
+                keeps: [
+                  { text: "通知先发到微信群（用户习惯在群里看通知）", priority: "P0", note: "" }
+                ],
+                questions: [
+                  { text: "微信群通知的格式/风格有什么偏好？", resolved: false },
+                  { text: "团员最常错过哪类通知？", resolved: false }
+                ]
               }
-            ],
-            [], [], [], []
+            },
+            {
+              id: "place-order",
+              colIdx: 1, spanDays: 2,
+              icon: "购", title: "团员下单",
+              desc: "浏览商品、加入购物车、选配送方式、提交订单",
+              role: "user", roleLabel: "团员",
+              details: {
+                known: "-- 团员浏览本周商品，按分类筛选\n-- 选择数量加入购物车\n-- 选择配送方式（团购到镇/固定取货点/直送到家）\n-- 填写必要信息（根据配送方式不同）\n-- 提交订单\n-- 截团前可自由修改/取消订单",
+                pains: [
+                  { text: "微信接龙格式不统一，团长需人工整理", priority: "P0", note: "" },
+                  { text: "团员看不到实时库存/已售数量", priority: "P1", note: "待确认是否需要" }
+                ],
+                keeps: [],
+                questions: [
+                  { text: "团员下单时还有哪些不方便的地方？", resolved: false },
+                  { text: "是否需要显示实时库存/已售数量？", resolved: false }
+                ]
+              }
+            },
+            {
+              id: "wishlist-signup",
+              colIdx: 2, spanDays: 1,
+              icon: "愿", title: "Wishlist / 报名",
+              desc: "提交想买的商品、报名本镇收货",
+              role: "user", roleLabel: "团员",
+              details: {
+                known: "-- 团员可提交想要的商品（从商品库选择或自由填写）\n-- 团长在截团后查看并尽量满足\n-- Wishlist 状态：待处理 -> 已加入订单 / 无法满足\n-- 团员可报名「本周我家收货」，提供收货地址\n-- 同镇其他团员下单时可看到取货地址",
+                pains: [],
+                keeps: [],
+                questions: [
+                  { text: "Wishlist 使用频率高吗？", resolved: false },
+                  { text: "收货报名的激励机制？如免运费？", resolved: false }
+                ]
+              }
+            },
+            {
+              id: "close-round",
+              colIdx: 2, spanDays: 1,
+              icon: "截", title: "截团",
+              desc: "手动或定时截团，停止接单",
+              role: "admin", roleLabel: "团长",
+              details: {
+                known: "-- 团长手动截团或设置定时自动截团\n-- 截团后团员不能再下新单\n-- 截团后修改/取消订单需团长批准",
+                pains: [],
+                keeps: [
+                  { text: "截团前发送提醒（还有 X 小时截团）", priority: "P1", note: "" }
+                ],
+                questions: [
+                  { text: "截团时间是否固定？比如每次都是周三晚？", resolved: false }
+                ]
+              }
+            }
           ]
         }
-      ],
-      spanBars: [
-        { startCol: 2, endCol: 4, text: "下单窗口（周二 ~ 周三晚截团）", colorType: "user" }
       ]
     },
     {
@@ -1042,186 +1057,176 @@ const DEFAULT_DATA = {
       label: "阶段二 -- 调整与出账",
       rows: [
         {
-          columns: [
-            [],
-            [],
-            [
-              {
-                id: "supplier-check",
-                icon: "供", title: "沟通货源",
-                desc: "确认各商品实际供应情况",
-                role: "supplier", roleLabel: "货源",
-                details: {
-                  known: "-- 截团后团长与货源/供应商沟通\n-- 确认各商品的实际供应情况\n-- 确定哪些商品缺货、需要换货、可以加货",
-                  pains: [],
-                  keeps: [],
-                  questions: [
-                    { text: "货源沟通主要通过什么方式？微信？电话？", resolved: false },
-                    { text: "货源是否有自己的系统可以对接？", resolved: false }
-                  ]
-                }
+          cards: [
+            {
+              id: "supplier-check",
+              colIdx: 2, spanDays: 1,
+              icon: "供", title: "沟通货源",
+              desc: "确认各商品实际供应情况",
+              role: "supplier", roleLabel: "货源",
+              details: {
+                known: "-- 截团后团长与货源/供应商沟通\n-- 确认各商品的实际供应情况\n-- 确定哪些商品缺货、需要换货、可以加货",
+                pains: [],
+                keeps: [],
+                questions: [
+                  { text: "货源沟通主要通过什么方式？微信？电话？", resolved: false },
+                  { text: "货源是否有自己的系统可以对接？", resolved: false }
+                ]
               }
-            ],
-            [
-              {
-                id: "adjust-orders",
-                icon: "调", title: "调整订单",
-                desc: "处理缺货（取消/减量/换货/加货）、处理 wishlist",
-                role: "admin", roleLabel: "团长",
-                details: {
-                  known: "-- 整体取消商品：从所有订单中移除\n-- 减少数量：如一箱->半箱，批量修改所有含此商品的订单\n-- 换货：商品 A -> 商品 B，通知受影响团员\n-- 紧急加货：新增商品，可能有不同截止时间\n-- 处理 wishlist：将可满足的 wishlist 加入对应团员订单",
-                  pains: [
-                    { text: "调整订单后需逐一通知受影响团员，工作量大", priority: "P0", note: "" },
-                    { text: "换货/减量需要手动修改每个订单", priority: "P0", note: "" }
-                  ],
-                  keeps: [
-                    { text: "团长手动确认每个调整项（非全自动）", priority: "P0", note: "调整涉及成本判断" }
-                  ],
-                  questions: [
-                    { text: "调整期还有哪些具体困难？", resolved: false }
-                  ]
-                }
-              },
-              {
-                id: "notify-adjust",
-                icon: "告", title: "发调整通知",
-                desc: "自动生成变更文案，通知受影响团员",
-                role: "admin", roleLabel: "团长",
-                details: {
-                  known: "-- 系统自动生成调整通知文案\n-- 列出被取消的商品\n-- 列出数量变化（原数量->新数量）\n-- 列出换货（A->B）\n-- 列出受影响的团员名单\n-- 团长复制文案发到群里",
-                  pains: [],
-                  keeps: [],
-                  questions: []
-                }
-              },
-              {
-                id: "generate-bill",
-                icon: "账", title: "出账单",
-                desc: "生成最终金额、Venmo 付款链接",
-                role: "admin", roleLabel: "团长",
-                details: {
-                  known: "-- 团长确认调整完成后点击「出最终账单」\n-- 系统计算每人最终金额：商品小计 + 配送费 - 余额抵扣\n-- 生成 Venmo 付款链接（预填金额和备注/订单号）\n-- 周状态变为 finalized\n-- 所有订单状态变为「已确认」",
-                  pains: [
-                    { text: "手动计算每人金额，容易出错", priority: "P0", note: "" },
-                    { text: "跟踪谁付了谁没付，靠人工记录", priority: "P0", note: "" }
-                  ],
-                  keeps: [
-                    { text: "使用 Venmo 付款", priority: "P0", note: "所有人都有 Venmo" }
-                  ],
-                  questions: [
-                    { text: "Venmo 付款有什么额外痛点？备注格式、金额不对等", resolved: false },
-                    { text: "是否有人用 Zelle 或其他方式付款？", resolved: false }
-                  ]
-                }
+            },
+            {
+              id: "adjust-orders",
+              colIdx: 3, spanDays: 1,
+              icon: "调", title: "调整订单",
+              desc: "处理缺货（取消/减量/换货/加货）、处理 wishlist",
+              role: "admin", roleLabel: "团长",
+              details: {
+                known: "-- 整体取消商品：从所有订单中移除\n-- 减少数量：如一箱->半箱，批量修改所有含此商品的订单\n-- 换货：商品 A -> 商品 B，通知受影响团员\n-- 紧急加货：新增商品，可能有不同截止时间\n-- 处理 wishlist：将可满足的 wishlist 加入对应团员订单",
+                pains: [
+                  { text: "调整订单后需逐一通知受影响团员，工作量大", priority: "P0", note: "" },
+                  { text: "换货/减量需要手动修改每个订单", priority: "P0", note: "" }
+                ],
+                keeps: [
+                  { text: "团长手动确认每个调整项（非全自动）", priority: "P0", note: "调整涉及成本判断" }
+                ],
+                questions: [
+                  { text: "调整期还有哪些具体困难？", resolved: false }
+                ]
               }
-            ],
-            [], [], []
+            },
+            {
+              id: "notify-adjust",
+              colIdx: 3, spanDays: 1,
+              icon: "告", title: "发调整通知",
+              desc: "自动生成变更文案，通知受影响团员",
+              role: "admin", roleLabel: "团长",
+              details: {
+                known: "-- 系统自动生成调整通知文案\n-- 列出被取消的商品\n-- 列出数量变化（原数量->新数量）\n-- 列出换货（A->B）\n-- 列出受影响的团员名单\n-- 团长复制文案发到群里",
+                pains: [],
+                keeps: [],
+                questions: []
+              }
+            },
+            {
+              id: "generate-bill",
+              colIdx: 3, spanDays: 1,
+              icon: "账", title: "出账单",
+              desc: "生成最终金额、Venmo 付款链接",
+              role: "admin", roleLabel: "团长",
+              details: {
+                known: "-- 团长确认调整完成后点击「出最终账单」\n-- 系统计算每人最终金额：商品小计 + 配送费 - 余额抵扣\n-- 生成 Venmo 付款链接（预填金额和备注/订单号）\n-- 周状态变为 finalized\n-- 所有订单状态变为「已确认」",
+                pains: [
+                  { text: "手动计算每人金额，容易出错", priority: "P0", note: "" },
+                  { text: "跟踪谁付了谁没付，靠人工记录", priority: "P0", note: "" }
+                ],
+                keeps: [
+                  { text: "使用 Venmo 付款", priority: "P0", note: "所有人都有 Venmo" }
+                ],
+                questions: [
+                  { text: "Venmo 付款有什么额外痛点？备注格式、金额不对等", resolved: false },
+                  { text: "是否有人用 Zelle 或其他方式付款？", resolved: false }
+                ]
+              }
+            }
           ]
         }
-      ],
-      spanBars: []
+      ]
     },
     {
       id: "phase3",
       label: "阶段三 -- 付款与送货",
       rows: [
         {
-          columns: [
-            [], [], [],
-            [
-              {
-                id: "user-pay",
-                icon: "付", title: "团员付款",
-                desc: "点击 Venmo 链接完成付款",
-                role: "user", roleLabel: "团员",
-                details: {
-                  known: "-- 团员收到账单通知\n-- 订单详情页显示应付金额和 Venmo 付款链接\n-- 点击链接跳转 Venmo 完成付款\n-- 支持查看未付款列表方便催款",
-                  pains: [],
-                  keeps: [],
-                  questions: []
-                }
-              },
-              {
-                id: "confirm-pay",
-                icon: "确", title: "确认付款",
-                desc: "核实收款、标记已付、催款未付",
-                role: "admin", roleLabel: "团长",
-                details: {
-                  known: "-- 团长在后台手动标记「已付款」\n-- 支持查看未付款列表\n-- 可生成催款文案",
-                  pains: [
-                    { text: "需要人工对照 Venmo 记录逐一确认，耗时", priority: "P1", note: "Phase 3 计划半自动对账" }
-                  ],
-                  keeps: [],
-                  questions: [
-                    { text: "退款频率高吗？主要原因是什么？", resolved: false },
-                    { text: "团员对余额抵扣规则是否理解/接受？", resolved: false },
-                    { text: "是否需要余额过期机制？", resolved: false }
-                  ]
-                }
+          cards: [
+            {
+              id: "user-pay",
+              colIdx: 3, spanDays: 2,
+              icon: "付", title: "团员付款",
+              desc: "点击 Venmo 链接完成付款",
+              role: "user", roleLabel: "团员",
+              details: {
+                known: "-- 团员收到账单通知\n-- 订单详情页显示应付金额和 Venmo 付款链接\n-- 点击链接跳转 Venmo 完成付款\n-- 支持查看未付款列表方便催款",
+                pains: [],
+                keeps: [],
+                questions: []
               }
-            ],
-            [
-              {
-                id: "delivery",
-                icon: "送", title: "义工送货",
-                desc: "按镇子送货单配送，送达后标记",
-                role: "volunteer", roleLabel: "义工",
-                details: {
-                  known: "-- 团长指定本周义工及负责的镇子\n-- 系统按镇子生成送货单\n-- 送货单含：地址、商品清单（中英双语）、金额\n-- 支持手机查看 + 导出 PDF/Excel\n-- 义工送完标记「已送达」",
-                  pains: [
-                    { text: "手动整理送货清单，按镇子分组很耗时", priority: "P0", note: "" },
-                    { text: "义工看不懂中文商品名", priority: "P1", note: "需中英双语" }
-                  ],
-                  keeps: [
-                    { text: "义工是志愿性质，每周团长指定", priority: "P0", note: "" }
-                  ],
-                  questions: [
-                    { text: "送货流程还有什么痛点？路线规划？送货顺序？", resolved: false },
-                    { text: "义工激励机制？如免运费、优先选货？", resolved: false },
-                    { text: "固定取货点的具体位置？", resolved: false },
-                    { text: "各镇配送费的具体数字？", resolved: false },
-                    { text: "免运费门槛金额？", resolved: false }
-                  ]
-                }
-              },
-              {
-                id: "receive",
-                icon: "收", title: "团员收货",
-                desc: "到镇取货 / 取货点取 / 家门口收",
-                role: "user", roleLabel: "团员",
-                details: {
-                  known: "-- 团购到镇：去本镇收货人家中取货\n-- 固定取货点：去指定取货点取\n-- 直送到家：等待送货上门",
-                  pains: [],
-                  keeps: [],
-                  questions: [
-                    { text: "是否有其他配送方式的需求？", resolved: false }
-                  ]
-                }
+            },
+            {
+              id: "confirm-pay",
+              colIdx: 3, spanDays: 1,
+              icon: "确", title: "确认付款",
+              desc: "核实收款、标记已付、催款未付",
+              role: "admin", roleLabel: "团长",
+              details: {
+                known: "-- 团长在后台手动标记「已付款」\n-- 支持查看未付款列表\n-- 可生成催款文案",
+                pains: [
+                  { text: "需要人工对照 Venmo 记录逐一确认，耗时", priority: "P1", note: "Phase 3 计划半自动对账" }
+                ],
+                keeps: [],
+                questions: [
+                  { text: "退款频率高吗？主要原因是什么？", resolved: false },
+                  { text: "团员对余额抵扣规则是否理解/接受？", resolved: false },
+                  { text: "是否需要余额过期机制？", resolved: false }
+                ]
               }
-            ],
-            [
-              {
-                id: "feedback",
-                icon: "评", title: "评价反馈",
-                desc: "提交商品评价和反馈图片",
-                role: "user", roleLabel: "团员",
-                style: "dashed",
-                details: {
-                  known: "-- 团员可提交文字+图片评价\n-- 评价状态为 pending，团长审核后展示\n-- 已批准的评价显示在商品详情页",
-                  pains: [],
-                  keeps: [],
-                  questions: [
-                    { text: "评价功能的优先级？是否 MVP 必需？", resolved: false }
-                  ]
-                }
+            },
+            {
+              id: "delivery",
+              colIdx: 4, spanDays: 1,
+              icon: "送", title: "义工送货",
+              desc: "按镇子送货单配送，送达后标记",
+              role: "volunteer", roleLabel: "义工",
+              details: {
+                known: "-- 团长指定本周义工及负责的镇子\n-- 系统按镇子生成送货单\n-- 送货单含：地址、商品清单（中英双语）、金额\n-- 支持手机查看 + 导出 PDF/Excel\n-- 义工送完标记「已送达」",
+                pains: [
+                  { text: "手动整理送货清单，按镇子分组很耗时", priority: "P0", note: "" },
+                  { text: "义工看不懂中文商品名", priority: "P1", note: "需中英双语" }
+                ],
+                keeps: [
+                  { text: "义工是志愿性质，每周团长指定", priority: "P0", note: "" }
+                ],
+                questions: [
+                  { text: "送货流程还有什么痛点？路线规划？送货顺序？", resolved: false },
+                  { text: "义工激励机制？如免运费、优先选货？", resolved: false },
+                  { text: "固定取货点的具体位置？", resolved: false },
+                  { text: "各镇配送费的具体数字？", resolved: false },
+                  { text: "免运费门槛金额？", resolved: false }
+                ]
               }
-            ],
-            []
+            },
+            {
+              id: "receive",
+              colIdx: 4, spanDays: 1,
+              icon: "收", title: "团员收货",
+              desc: "到镇取货 / 取货点取 / 家门口收",
+              role: "user", roleLabel: "团员",
+              details: {
+                known: "-- 团购到镇：去本镇收货人家中取货\n-- 固定取货点：去指定取货点取\n-- 直送到家：等待送货上门",
+                pains: [],
+                keeps: [],
+                questions: [
+                  { text: "是否有其他配送方式的需求？", resolved: false }
+                ]
+              }
+            },
+            {
+              id: "feedback",
+              colIdx: 5, spanDays: 1,
+              icon: "评", title: "评价反馈",
+              desc: "提交商品评价和反馈图片",
+              role: "user", roleLabel: "团员",
+              style: "dashed",
+              details: {
+                known: "-- 团员可提交文字+图片评价\n-- 评价状态为 pending，团长审核后展示\n-- 已批准的评价显示在商品详情页",
+                pains: [],
+                keeps: [],
+                questions: [
+                  { text: "评价功能的优先级？是否 MVP 必需？", resolved: false }
+                ]
+              }
+            }
           ]
         }
-      ],
-      spanBars: [
-        { startCol: 4, endCol: 6, text: "付款窗口（周四 ~ 周五）", colorType: "user" }
       ]
     }
   ],
@@ -1263,6 +1268,46 @@ let dragSourceInfo = null;
 let saveTimeout = null;
 let isInitialLoad = true;
 
+// Resize state
+let resizeState = null; // { cardId, phaseId, rowIdx, startX, startSpan, gridEl }
+
+// ============================
+// DATA MIGRATION
+// ============================
+// Convert old column-based rows to new flat cards array
+function migrateData(d) {
+  if (!d || !d.phases) return d;
+  d.phases.forEach(function(phase) {
+    // Remove spanBars
+    delete phase.spanBars;
+    phase.rows.forEach(function(row) {
+      if (row.columns && !row.cards) {
+        // Migrate from columns to flat cards
+        var cards = [];
+        for (var c = 0; c < row.columns.length; c++) {
+          var col = row.columns[c];
+          if (!col) continue;
+          for (var i = 0; i < col.length; i++) {
+            var card = col[i];
+            if (!card.colIdx && card.colIdx !== 0) card.colIdx = c;
+            if (!card.spanDays) card.spanDays = 1;
+            cards.push(card);
+          }
+        }
+        row.cards = cards;
+        delete row.columns;
+      } else if (row.cards) {
+        // Ensure all cards have colIdx and spanDays
+        row.cards.forEach(function(card) {
+          if (card.colIdx === undefined) card.colIdx = 0;
+          if (!card.spanDays) card.spanDays = 1;
+        });
+      }
+    });
+  });
+  return d;
+}
+
 // ============================
 // FIREBASE SYNC
 // ============================
@@ -1271,7 +1316,7 @@ function initFirebase() {
   dataRef.on('value', (snapshot) => {
     const val = snapshot.val();
     if (val) {
-      data = val;
+      data = migrateData(val);
     } else {
       // First time -- seed with default data
       data = JSON.parse(JSON.stringify(DEFAULT_DATA));
@@ -1299,7 +1344,7 @@ function initFirebase() {
     // Fallback to localStorage
     const saved = localStorage.getItem('tuangou_flow_backup');
     if (saved && !data) {
-      data = JSON.parse(saved);
+      data = migrateData(JSON.parse(saved));
       render();
       renderNonWeekly();
       document.getElementById('loadingOverlay').classList.add('hidden');
@@ -1351,73 +1396,124 @@ function save() {
 }
 
 // ============================
+// ROW ALLOCATION for grid layout
+// ============================
+// Given a list of cards with colIdx and spanDays, compute gridRow for each
+// Returns an array of { card, gridRow, gridCol, gridSpan }
+function computeRowAllocations(cards) {
+  // Sort cards by colIdx, then by their order in the array (stable)
+  var sorted = cards.slice().sort(function(a, b) {
+    return (a.colIdx || 0) - (b.colIdx || 0);
+  });
+
+  // Track which (row, col) cells are occupied
+  // occupied[row][col] = true
+  var occupied = {};
+
+  function isFree(row, col, span) {
+    for (var c = col; c < col + span; c++) {
+      if (occupied[row] && occupied[row][c]) return false;
+    }
+    return true;
+  }
+
+  function markOccupied(row, col, span) {
+    if (!occupied[row]) occupied[row] = {};
+    for (var c = col; c < col + span; c++) {
+      occupied[row][c] = true;
+    }
+  }
+
+  var result = [];
+  sorted.forEach(function(card) {
+    var col = card.colIdx || 0;
+    var span = card.spanDays || 1;
+    // Find first available row
+    var row = 1;
+    while (!isFree(row, col, span)) {
+      row++;
+    }
+    markOccupied(row, col, span);
+    result.push({ card: card, gridRow: row, gridCol: col + 1, gridSpan: span });
+  });
+
+  return result;
+}
+
+// ============================
 // RENDER
 // ============================
 function render() {
   if (!data) return;
-  const tl = document.getElementById("timeline");
-  let html = "";
+  var tl = document.getElementById("timeline");
+  var html = "";
 
-  DAY_LABELS.forEach(d => {
+  DAY_LABELS.forEach(function(d) {
     html += '<div class="day-header"><div class="day-label">' + d.en + '</div><div class="day-name">' + d.zh + '</div></div>';
   });
 
   html += '<div class="connector-row">';
-  for (let i = 0; i < 7; i++) html += '<div class="connector-dot"></div>';
+  for (var i = 0; i < 7; i++) html += '<div class="connector-dot"></div>';
   html += '</div>';
 
-  data.phases.forEach(phase => {
+  data.phases.forEach(function(phase) {
     html += '<div class="phase-row"><div class="phase-line"></div><div class="phase-label">' + phase.label + '</div><div class="phase-line"></div></div>';
 
-    phase.rows.forEach((row, rowIdx) => {
-      html += '<div class="activities-row">';
-      // Ensure we always have 7 columns
-      for (let colIdx = 0; colIdx < 7; colIdx++) {
-        var cards = (row.columns && row.columns[colIdx]) ? row.columns[colIdx] : [];
-        html += '<div class="day-column" data-phase="' + phase.id + '" data-row="' + rowIdx + '" data-col="' + colIdx + '"'
-              + ' ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">';
-        if (cards && cards.length > 0) {
-          cards.forEach((card, cardIdx) => {
-            var isSelected = selectedCardId === card.id;
-            var painCount = card.details && card.details.pains ? card.details.pains.length : 0;
-            var qCount = card.details && card.details.questions ? card.details.questions.filter(function(q) { return !q.resolved; }).length : 0;
-            var borderStyle = card.style === 'dashed' ? 'border-style:dashed;opacity:0.8;' : '';
+    phase.rows.forEach(function(row, rowIdx) {
+      var cards = row.cards || [];
+      var allocations = computeRowAllocations(cards);
 
-            html += '<div class="activity ' + card.role + (isSelected ? ' selected' : '') + '" style="' + borderStyle + '"'
-                  + ' draggable="true" data-card-id="' + card.id + '"'
-                  + ' onclick="openPanel(\'' + card.id + '\')"'
-                  + ' ondragstart="onDragStart(event, \'' + phase.id + '\', ' + rowIdx + ', ' + colIdx + ', ' + cardIdx + ')"'
-                  + ' ondragend="onDragEnd(event)">'
-                  + '<div class="drag-handle">///</div>'
-                  + '<div class="activity-title">' + card.title + '</div>'
-                  + '<div class="activity-desc">' + card.desc + '</div>'
-                  + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
-                  + '<div class="activity-role">' + card.roleLabel + '</div>';
-            if (painCount > 0) html += '<span class="card-badge pain">' + painCount + ' 痛点</span>';
-            if (qCount > 0) html += '<span class="card-badge open">' + qCount + ' 待确认</span>';
-            html += '</div></div>';
-            if (cardIdx < cards.length - 1) html += '<div class="arrow-down">V</div>';
-          });
-        }
-        html += '<button class="add-step-btn" onclick="addStep(\'' + phase.id + '\', ' + rowIdx + ', ' + colIdx + ')">+ 添加</button>';
+      // Compute max row used
+      var maxRow = 0;
+      allocations.forEach(function(a) { if (a.gridRow > maxRow) maxRow = a.gridRow; });
+
+      // Render phase grid
+      html += '<div class="phase-grid" data-phase="' + phase.id + '" data-row="' + rowIdx + '"'
+            + ' style="grid-template-rows: repeat(' + (maxRow || 1) + ', auto);">';
+
+      allocations.forEach(function(a) {
+        var card = a.card;
+        var isSelected = selectedCardId === card.id;
+        var painCount = card.details && card.details.pains ? card.details.pains.length : 0;
+        var qCount = card.details && card.details.questions ? card.details.questions.filter(function(q) { return !q.resolved; }).length : 0;
+        var borderStyle = card.style === 'dashed' ? 'border-style:dashed;opacity:0.8;' : '';
+
+        var gridStyle = 'grid-column: ' + a.gridCol + ' / span ' + a.gridSpan + '; grid-row: ' + a.gridRow + ';';
+
+        html += '<div class="activity ' + card.role + (isSelected ? ' selected' : '') + '"'
+              + ' style="' + borderStyle + gridStyle + '"'
+              + ' draggable="true" data-card-id="' + card.id + '"'
+              + ' data-phase="' + phase.id + '" data-row="' + rowIdx + '"'
+              + ' onclick="onCardClick(event, \'' + card.id + '\')"'
+              + ' ondragstart="onDragStart(event, \'' + phase.id + '\', ' + rowIdx + ', \'' + card.id + '\')"'
+              + ' ondragend="onDragEnd(event)">'
+              + '<div class="drag-handle">///</div>'
+              + '<div class="activity-title">' + card.title + '</div>'
+              + '<div class="activity-desc">' + card.desc + '</div>'
+              + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
+              + '<div class="activity-role">' + card.roleLabel + '</div>';
+        if (painCount > 0) html += '<span class="card-badge pain">' + painCount + ' 痛点</span>';
+        if (qCount > 0) html += '<span class="card-badge open">' + qCount + ' 待确认</span>';
         html += '</div>';
+        // Resize handle
+        if (a.gridSpan < 7 - (card.colIdx || 0)) {
+          html += '<div class="resize-handle" onmousedown="onResizeStart(event, \'' + card.id + '\', \'' + phase.id + '\', ' + rowIdx + ')"></div>';
+        }
+        html += '</div>';
+      });
+
+      html += '</div>';
+
+      // Add-step buttons row
+      html += '<div class="add-step-row">';
+      for (var colIdx = 0; colIdx < 7; colIdx++) {
+        html += '<div class="day-drop-zone" data-phase="' + phase.id + '" data-row="' + rowIdx + '" data-col="' + colIdx + '"'
+              + ' ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">'
+              + '<button class="add-step-btn" onclick="addStep(\'' + phase.id + '\', ' + rowIdx + ', ' + colIdx + ')">+ 添加</button>'
+              + '</div>';
       }
       html += '</div>';
     });
-
-    if (phase.spanBars && phase.spanBars.length > 0) {
-      html += '<div class="span-bar">';
-      var col = 1;
-      phase.spanBars.forEach(function(bar) {
-        while (col < bar.startCol) { html += '<div></div>'; col++; }
-        html += '<div class="span-label" style="grid-column:' + bar.startCol + '/' + bar.endCol + ';background:var(--' + bar.colorType + '-bg);border:1.5px solid var(--' + bar.colorType + '-border);color:var(--' + bar.colorType + ');">'
-              + bar.text
-              + '</div>';
-        col = bar.endCol;
-      });
-      while (col <= 7) { html += '<div></div>'; col++; }
-      html += '</div>';
-    }
   });
 
   tl.innerHTML = html;
@@ -1452,6 +1548,14 @@ function renderNonWeekly() {
   html += '</div>';
 
   section.innerHTML = html;
+}
+
+// ============================
+// CARD CLICK (avoid opening panel when resize handle is clicked)
+// ============================
+function onCardClick(e, cardId) {
+  if (e.target.classList.contains('resize-handle')) return;
+  openPanel(cardId);
 }
 
 // ============================
@@ -1566,11 +1670,25 @@ function findCard(id) {
     var phase = data.phases[p];
     for (var r = 0; r < phase.rows.length; r++) {
       var row = phase.rows[r];
-      for (var c = 0; c < row.columns.length; c++) {
-        var col = row.columns[c];
-        if (!col) continue;
-        for (var i = 0; i < col.length; i++) {
-          if (col[i].id === id) return col[i];
+      var cards = row.cards || [];
+      for (var i = 0; i < cards.length; i++) {
+        if (cards[i].id === id) return cards[i];
+      }
+    }
+  }
+  return null;
+}
+
+function findCardLocation(id) {
+  if (!data || !data.phases) return null;
+  for (var p = 0; p < data.phases.length; p++) {
+    var phase = data.phases[p];
+    for (var r = 0; r < phase.rows.length; r++) {
+      var row = phase.rows[r];
+      var cards = row.cards || [];
+      for (var i = 0; i < cards.length; i++) {
+        if (cards[i].id === id) {
+          return { phase: phase, row: row, phaseIdx: p, rowIdx: r, cardIdx: i };
         }
       }
     }
@@ -1670,11 +1788,12 @@ function addStep(phaseId, rowIdx, colIdx) {
   if (!phase) return;
   var row = phase.rows[rowIdx];
   if (!row) return;
-  while (row.columns.length <= colIdx) row.columns.push([]);
-  if (!row.columns[colIdx]) row.columns[colIdx] = [];
+  if (!row.cards) row.cards = [];
 
   var newCard = {
     id: "step-" + Date.now(),
+    colIdx: colIdx,
+    spanDays: 1,
     icon: title.charAt(0),
     title: title,
     desc: "",
@@ -1683,7 +1802,7 @@ function addStep(phaseId, rowIdx, colIdx) {
     details: { known: "", pains: [], keeps: [], questions: [] }
   };
 
-  row.columns[colIdx].push(newCard);
+  row.cards.push(newCard);
   save();
   render();
   renderNonWeekly();
@@ -1725,11 +1844,10 @@ function addNonWeeklyTask() {
 // ============================
 // DRAG AND DROP
 // ============================
-var dropTargetInfo = null; // { phaseId, rowIdx, colIdx, insertIdx }
+var dropTargetInfo = null;
 
-function onDragStart(e, phaseId, rowIdx, colIdx, cardIdx) {
-  dragSourceInfo = { phaseId: phaseId, rowIdx: rowIdx, colIdx: colIdx, cardIdx: cardIdx };
-  // Delay adding class so the drag image captures the card properly
+function onDragStart(e, phaseId, rowIdx, cardId) {
+  dragSourceInfo = { phaseId: phaseId, rowIdx: rowIdx, cardId: cardId };
   setTimeout(function() { e.target.classList.add('dragging'); }, 0);
   e.dataTransfer.effectAllowed = 'move';
   e.dataTransfer.setData('text/plain', '');
@@ -1740,6 +1858,10 @@ function onDragEnd(e) {
   clearPlaceholder();
   dragSourceInfo = null;
   dropTargetInfo = null;
+  // Remove all drag-over classes
+  document.querySelectorAll('.day-drop-zone.drag-over').forEach(function(el) {
+    el.classList.remove('drag-over');
+  });
 }
 
 function onDragOver(e) {
@@ -1747,84 +1869,19 @@ function onDragOver(e) {
   e.dataTransfer.dropEffect = 'move';
   if (!dragSourceInfo) return;
 
-  var col = e.currentTarget;
-  var phaseId = col.dataset.phase;
-  var rowIdx = parseInt(col.dataset.row);
-  var colIdx = parseInt(col.dataset.col);
+  var zone = e.currentTarget;
+  zone.classList.add('drag-over');
 
-  // Find insert position based on mouse Y relative to cards
-  var cards = col.querySelectorAll('.activity');
-  var insertIdx = cards.length; // default: end
-  for (var i = 0; i < cards.length; i++) {
-    var rect = cards[i].getBoundingClientRect();
-    if (e.clientY < rect.top + rect.height / 2) {
-      insertIdx = i;
-      break;
-    }
-  }
+  var phaseId = zone.dataset.phase;
+  var rowIdx = parseInt(zone.dataset.row);
+  var colIdx = parseInt(zone.dataset.col);
 
-  // Adjust index: if dragging within same column and source is before insert, account for removal
-  var sameCol = (dragSourceInfo.phaseId === phaseId &&
-                 dragSourceInfo.rowIdx === rowIdx &&
-                 dragSourceInfo.colIdx === colIdx);
-  var adjustedIdx = insertIdx;
-  if (sameCol && dragSourceInfo.cardIdx < insertIdx) {
-    adjustedIdx--;
-  }
-  // Skip if placeholder is already in the right place
-  if (dropTargetInfo &&
-      dropTargetInfo.phaseId === phaseId &&
-      dropTargetInfo.rowIdx === rowIdx &&
-      dropTargetInfo.colIdx === colIdx &&
-      dropTargetInfo.insertIdx === adjustedIdx) {
-    return;
-  }
-
-  dropTargetInfo = { phaseId: phaseId, rowIdx: rowIdx, colIdx: colIdx, insertIdx: adjustedIdx };
-  showPlaceholder(col, insertIdx, sameCol ? dragSourceInfo.cardIdx : -1);
+  dropTargetInfo = { phaseId: phaseId, rowIdx: rowIdx, colIdx: colIdx };
 }
 
 function onDragLeave(e) {
-  // Only clear if we actually left the column (not entering a child)
   if (!e.currentTarget.contains(e.relatedTarget)) {
-    clearPlaceholderInColumn(e.currentTarget);
-  }
-}
-
-function showPlaceholder(column, insertIdx, skipIdx) {
-  // Remove any existing placeholders
-  document.querySelectorAll('.drop-placeholder').forEach(function(el) { el.remove(); });
-
-  var cards = column.querySelectorAll('.activity');
-  var placeholder = document.createElement('div');
-  placeholder.className = 'drop-placeholder';
-
-  // Measure card height for placeholder
-  var refCard = column.querySelector('.activity:not(.dragging)');
-  if (refCard) {
-    placeholder.style.height = refCard.offsetHeight + 'px';
-  } else {
-    placeholder.style.height = '60px';
-  }
-
-  // Find the reference node to insert before
-  // Filter out dragging card and arrows
-  var childNodes = [];
-  for (var i = 0; i < column.children.length; i++) {
-    var child = column.children[i];
-    if (child.classList.contains('activity') || child.classList.contains('arrow-down')) {
-      childNodes.push(child);
-    }
-  }
-
-  // Map insertIdx to actual DOM position (accounting for arrows between cards)
-  var activityNodes = column.querySelectorAll('.activity');
-  if (insertIdx >= activityNodes.length) {
-    // Insert before the add button
-    var addBtn = column.querySelector('.add-step-btn');
-    column.insertBefore(placeholder, addBtn);
-  } else {
-    column.insertBefore(placeholder, activityNodes[insertIdx]);
+    e.currentTarget.classList.remove('drag-over');
   }
 }
 
@@ -1832,13 +1889,9 @@ function clearPlaceholder() {
   document.querySelectorAll('.drop-placeholder').forEach(function(el) { el.remove(); });
 }
 
-function clearPlaceholderInColumn(column) {
-  column.querySelectorAll('.drop-placeholder').forEach(function(el) { el.remove(); });
-  dropTargetInfo = null;
-}
-
 function onDrop(e) {
   e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
   clearPlaceholder();
   if (!dragSourceInfo) return;
 
@@ -1846,32 +1899,117 @@ function onDrop(e) {
   var tgtRowIdx = parseInt(e.currentTarget.dataset.row);
   var tgtColIdx = parseInt(e.currentTarget.dataset.col);
 
+  // Find source card and remove it
   var srcPhase = data.phases.find(function(p) { return p.id === dragSourceInfo.phaseId; });
-  var srcCol = srcPhase.rows[dragSourceInfo.rowIdx].columns[dragSourceInfo.colIdx];
+  var srcRow = srcPhase.rows[dragSourceInfo.rowIdx];
+  var srcCards = srcRow.cards || [];
+  var srcIdx = -1;
+  for (var i = 0; i < srcCards.length; i++) {
+    if (srcCards[i].id === dragSourceInfo.cardId) { srcIdx = i; break; }
+  }
+  if (srcIdx === -1) return;
 
-  var tgtPhase = data.phases.find(function(p) { return p.id === tgtPhaseId; });
-  if (!tgtPhase.rows[tgtRowIdx].columns[tgtColIdx]) tgtPhase.rows[tgtRowIdx].columns[tgtColIdx] = [];
-  var tgtCol = tgtPhase.rows[tgtRowIdx].columns[tgtColIdx];
+  var card = srcCards.splice(srcIdx, 1)[0];
 
-  // Determine insert position
-  var insertIdx = tgtCol.length; // default: end
-  if (dropTargetInfo &&
-      dropTargetInfo.phaseId === tgtPhaseId &&
-      dropTargetInfo.rowIdx === tgtRowIdx &&
-      dropTargetInfo.colIdx === tgtColIdx) {
-    insertIdx = dropTargetInfo.insertIdx;
+  // Update card column position, keep spanDays
+  card.colIdx = tgtColIdx;
+  // Clamp spanDays so card does not go past column 7
+  if (card.colIdx + card.spanDays > 7) {
+    card.spanDays = 7 - card.colIdx;
   }
 
-  // Remove card from source
-  var card = srcCol.splice(dragSourceInfo.cardIdx, 1)[0];
-
-  // Insert at target position
-  tgtCol.splice(insertIdx, 0, card);
+  // Insert into target row
+  var tgtPhase = data.phases.find(function(p) { return p.id === tgtPhaseId; });
+  var tgtRow = tgtPhase.rows[tgtRowIdx];
+  if (!tgtRow.cards) tgtRow.cards = [];
+  tgtRow.cards.push(card);
 
   dragSourceInfo = null;
   dropTargetInfo = null;
   save(); render(); renderNonWeekly();
   showToast("已移动「" + card.title + "」");
+}
+
+// ============================
+// RESIZE
+// ============================
+function onResizeStart(e, cardId, phaseId, rowIdx) {
+  e.preventDefault();
+  e.stopPropagation();
+
+  var card = findCard(cardId);
+  if (!card) return;
+
+  // Find the phase grid element to compute column boundaries
+  var gridEl = e.target.closest('.phase-grid');
+  if (!gridEl) return;
+
+  resizeState = {
+    cardId: cardId,
+    phaseId: phaseId,
+    rowIdx: rowIdx,
+    startX: e.clientX,
+    startSpan: card.spanDays || 1,
+    startColIdx: card.colIdx || 0,
+    gridEl: gridEl
+  };
+
+  // Add resizing class to card
+  var cardEl = e.target.closest('.activity');
+  if (cardEl) cardEl.classList.add('resizing');
+
+  document.addEventListener('mousemove', onResizeMove);
+  document.addEventListener('mouseup', onResizeEnd);
+}
+
+function onResizeMove(e) {
+  if (!resizeState) return;
+
+  var gridEl = resizeState.gridEl;
+  var gridRect = gridEl.getBoundingClientRect();
+  var gridWidth = gridRect.width;
+  var colWidth = gridWidth / 7;
+
+  // Calculate which column the mouse is over (relative to grid left)
+  var mouseRelX = e.clientX - gridRect.left;
+  var mouseCol = Math.floor(mouseRelX / colWidth);
+
+  // New span = mouseCol - startColIdx + 1, minimum 1, max 7-startColIdx
+  var newSpan = mouseCol - resizeState.startColIdx + 1;
+  if (newSpan < 1) newSpan = 1;
+  if (newSpan > 7 - resizeState.startColIdx) newSpan = 7 - resizeState.startColIdx;
+
+  // Update card element width in real-time
+  var cardEl = gridEl.querySelector('[data-card-id="' + resizeState.cardId + '"]');
+  if (cardEl) {
+    cardEl.style.gridColumn = (resizeState.startColIdx + 1) + ' / span ' + newSpan;
+  }
+
+  resizeState.currentSpan = newSpan;
+}
+
+function onResizeEnd(e) {
+  document.removeEventListener('mousemove', onResizeMove);
+  document.removeEventListener('mouseup', onResizeEnd);
+
+  if (!resizeState) return;
+
+  var newSpan = resizeState.currentSpan || resizeState.startSpan;
+  var card = findCard(resizeState.cardId);
+  if (card && newSpan !== card.spanDays) {
+    card.spanDays = newSpan;
+    save();
+  }
+
+  // Remove resizing class
+  if (resizeState.gridEl) {
+    var cardEl = resizeState.gridEl.querySelector('[data-card-id="' + resizeState.cardId + '"]');
+    if (cardEl) cardEl.classList.remove('resizing');
+  }
+
+  resizeState = null;
+  render();
+  renderNonWeekly();
 }
 
 // ============================
@@ -1894,7 +2032,7 @@ function importData(event) {
   var reader = new FileReader();
   reader.onload = function(e) {
     try {
-      data = JSON.parse(e.target.result);
+      data = migrateData(JSON.parse(e.target.result));
       save(); render(); renderNonWeekly();
       showToast("已导入数据");
     } catch(err) {
