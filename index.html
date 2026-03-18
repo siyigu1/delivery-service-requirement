@@ -1523,6 +1523,7 @@ let selectedCardId = null;
 let dragSourceInfo = null;
 let saveTimeout = null;
 let isInitialLoad = true;
+let isSaving = false; // true while our own save is pending/in-flight
 
 // Resize state
 let resizeState = null; // { cardId, phaseId, rowIdx, startX, startSpan, gridEl }
@@ -1619,6 +1620,17 @@ function initFirebase() {
   // Listen for data changes (real-time sync)
   dataRef.on('value', (snapshot) => {
     const val = snapshot.val();
+
+    // If this is our own save echoing back and user is editing, skip full re-render
+    var panelBody = document.getElementById('panelBody');
+    var isEditing = panelBody && panelBody.contains(document.activeElement);
+
+    if (isSaving && isEditing && !isInitialLoad) {
+      // Our own write echoed back while user is typing — skip to avoid losing focus
+      setSyncStatus('connected');
+      return;
+    }
+
     if (val) {
       data = migrateData(val);
     } else {
@@ -1631,9 +1643,9 @@ function initFirebase() {
     renderNonWeekly();
     renderLegend();
 
-    // Re-render panel if open
-    if (selectedCardId) {
-      const card = findCard(selectedCardId) || findNonWeeklyCard(selectedCardId);
+    // Re-render panel if open, BUT only if user is not actively editing
+    if (selectedCardId && !isEditing) {
+      var card = findCard(selectedCardId) || findNonWeeklyCard(selectedCardId);
       if (card) renderPanelBody(card);
     }
 
@@ -1687,11 +1699,15 @@ function setSyncStatus(status) {
 function save() {
   // Debounce writes to Firebase
   if (saveTimeout) clearTimeout(saveTimeout);
+  isSaving = true;
   setSyncStatus('syncing');
   saveTimeout = setTimeout(() => {
     dataRef.set(data).then(() => {
+      // Small delay before clearing isSaving so the echo callback is ignored
+      setTimeout(function() { isSaving = false; }, 300);
       setSyncStatus('connected');
     }).catch((err) => {
+      isSaving = false;
       console.error('Save error:', err);
       setSyncStatus('error');
     });
