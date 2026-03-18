@@ -1,0 +1,1519 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>团购每周流程 — 交互式需求文档</title>
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<style>
+  :root {
+    --admin: #2563eb;
+    --admin-bg: #eff6ff;
+    --admin-border: #bfdbfe;
+    --admin-hover: #dbeafe;
+    --user: #059669;
+    --user-bg: #ecfdf5;
+    --user-border: #a7f3d0;
+    --user-hover: #d1fae5;
+    --volunteer: #d97706;
+    --volunteer-bg: #fffbeb;
+    --volunteer-border: #fde68a;
+    --volunteer-hover: #fef3c7;
+    --supplier: #7c3aed;
+    --supplier-bg: #f5f3ff;
+    --supplier-border: #ddd6fe;
+    --supplier-hover: #ede9fe;
+    --line: #cbd5e1;
+    --bg: #f8fafc;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --card-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    --panel-width: 520px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 40px 20px;
+    transition: padding-right 0.3s;
+  }
+
+  body.panel-open {
+    padding-right: calc(var(--panel-width) + 20px);
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+
+  h1 { font-size: 28px; font-weight: 700; }
+
+  .header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .btn {
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1.5px solid var(--line);
+    background: white;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s;
+    color: var(--text);
+  }
+
+  .btn:hover { background: #f1f5f9; border-color: #94a3b8; }
+  .btn.primary { background: var(--admin); color: white; border-color: var(--admin); }
+  .btn.primary:hover { background: #1d4ed8; }
+  .btn.danger { color: #dc2626; border-color: #fca5a5; }
+  .btn.danger:hover { background: #fef2f2; }
+
+  .subtitle {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 15px;
+    margin-bottom: 32px;
+  }
+
+  /* Sync status */
+  .sync-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: #f1f5f9;
+  }
+
+  .sync-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #94a3b8;
+  }
+
+  .sync-dot.connected { background: #22c55e; }
+  .sync-dot.syncing { background: #f59e0b; animation: pulse 1s infinite; }
+
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-bottom: 36px;
+    flex-wrap: wrap;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+
+  /* Timeline grid */
+  .timeline {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0;
+    position: relative;
+  }
+
+  /* Day headers */
+  .day-header {
+    text-align: center;
+    padding: 12px 8px;
+  }
+
+  .day-label {
+    font-size: 13px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+
+  .day-name { font-size: 20px; font-weight: 700; }
+
+  /* Connector */
+  .connector-row {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    position: relative;
+    height: 40px;
+    align-items: center;
+  }
+
+  .connector-row::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 10%;
+    right: 10%;
+    height: 3px;
+    background: linear-gradient(90deg, var(--admin), var(--user), var(--volunteer));
+    border-radius: 2px;
+    transform: translateY(-50%);
+  }
+
+  .connector-dot {
+    width: 14px;
+    height: 14px;
+    background: white;
+    border: 3px solid var(--admin);
+    border-radius: 50%;
+    margin: 0 auto;
+    position: relative;
+    z-index: 2;
+  }
+
+  .connector-dot:nth-child(4) { border-color: var(--volunteer); }
+  .connector-dot:nth-child(5) { border-color: var(--line); background: var(--bg); }
+
+  /* Activity columns */
+  .activities-row {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    padding: 0 8px;
+    margin-top: 8px;
+  }
+
+  .day-column {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 40px;
+    border-radius: 12px;
+    padding: 4px;
+    transition: background 0.2s;
+  }
+
+  .day-column.drag-over {
+    background: rgba(37, 99, 235, 0.06);
+    outline: 2px dashed var(--admin-border);
+    outline-offset: -2px;
+  }
+
+  /* Activity cards */
+  .activity {
+    border-radius: 12px;
+    padding: 14px;
+    position: relative;
+    border: 1.5px solid;
+    transition: transform 0.15s, box-shadow 0.15s;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .activity:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  }
+
+  .activity.selected {
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.3), 0 4px 16px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+  }
+
+  .activity.dragging { opacity: 0.4; transform: scale(0.95); }
+
+  .activity.admin { background: var(--admin-bg); border-color: var(--admin-border); }
+  .activity.user { background: var(--user-bg); border-color: var(--user-border); }
+  .activity.volunteer { background: var(--volunteer-bg); border-color: var(--volunteer-border); }
+  .activity.supplier { background: var(--supplier-bg); border-color: var(--supplier-border); }
+
+  .activity-icon { font-size: 28px; margin-bottom: 8px; line-height: 1; }
+
+  .activity-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    line-height: 1.3;
+  }
+
+  .admin .activity-title { color: var(--admin); }
+  .user .activity-title { color: var(--user); }
+  .volunteer .activity-title { color: var(--volunteer); }
+  .supplier .activity-title { color: var(--supplier); }
+
+  .activity-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  .activity-role {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-top: 8px;
+  }
+
+  .admin .activity-role { background: var(--admin); color: white; }
+  .user .activity-role { background: var(--user); color: white; }
+  .volunteer .activity-role { background: var(--volunteer); color: white; }
+  .supplier .activity-role { background: var(--supplier); color: white; }
+
+  .drag-handle {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    color: var(--line);
+    font-size: 14px;
+    cursor: grab;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .activity:hover .drag-handle { opacity: 1; }
+
+  .card-badges {
+    display: flex;
+    gap: 4px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+
+  .card-badge {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(0,0,0,0.06);
+    color: var(--text-muted);
+  }
+
+  .card-badge.pain { background: #fee2e2; color: #dc2626; }
+  .card-badge.open { background: #fef3c7; color: #b45309; }
+
+  .arrow-down {
+    text-align: center;
+    color: var(--line);
+    font-size: 18px;
+    line-height: 1;
+    margin: -4px 0;
+    pointer-events: none;
+  }
+
+  /* Span bars */
+  .span-bar {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    padding: 0 8px;
+    margin-top: 12px;
+  }
+
+  .span-label {
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .span-label .icon { font-size: 16px; }
+
+  /* Phase dividers */
+  .phase-row {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 24px 0 12px;
+    padding: 0 8px;
+  }
+
+  .phase-line { flex: 1; height: 1px; background: var(--line); }
+
+  .phase-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    white-space: nowrap;
+  }
+
+  /* ======================== */
+  /* Side Panel               */
+  /* ======================== */
+  .side-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: var(--panel-width);
+    height: 100vh;
+    background: white;
+    box-shadow: -4px 0 24px rgba(0,0,0,0.1);
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .side-panel.open { transform: translateX(0); }
+
+  .panel-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  .panel-header-icon { font-size: 32px; line-height: 1; }
+  .panel-header-text { flex: 1; }
+
+  .panel-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .panel-subtitle {
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  .panel-close {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: none;
+    background: #f1f5f9;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+
+  .panel-close:hover { background: #e2e8f0; }
+
+  .panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px;
+  }
+
+  .panel-section { margin-bottom: 24px; }
+
+  .panel-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .panel-section-title {
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-icon { font-size: 16px; }
+
+  .add-btn {
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1.5px dashed var(--line);
+    background: white;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.15s;
+  }
+
+  .add-btn:hover {
+    border-color: var(--admin);
+    color: var(--admin);
+    background: var(--admin-bg);
+  }
+
+  .editable-area {
+    width: 100%;
+    min-height: 60px;
+    padding: 10px 12px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.6;
+    font-family: inherit;
+    color: var(--text);
+    resize: vertical;
+    transition: border-color 0.15s;
+    background: #fafbfc;
+  }
+
+  .editable-area:focus {
+    outline: none;
+    border-color: var(--admin);
+    background: white;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+
+  .editable-area::placeholder { color: #94a3b8; }
+
+  .item-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .item-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: #fafbfc;
+    border: 1.5px solid #e2e8f0;
+    transition: border-color 0.15s;
+  }
+
+  .item-row:focus-within { border-color: var(--admin); background: white; }
+  .item-row.pain { background: #fef2f2; border-color: #fecaca; }
+  .item-row.keep { background: #f0fdf4; border-color: #bbf7d0; }
+
+  .item-priority {
+    flex-shrink: 0;
+    width: 36px;
+    padding: 4px;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    background: white;
+    cursor: pointer;
+  }
+
+  .item-priority.p0, .item-priority.P0 { color: #dc2626; border-color: #fca5a5; }
+  .item-priority.p1, .item-priority.P1 { color: #d97706; border-color: #fde68a; }
+  .item-priority.p2, .item-priority.P2 { color: #2563eb; border-color: #bfdbfe; }
+  .item-priority.p3, .item-priority.P3 { color: #64748b; border-color: #e2e8f0; }
+
+  .item-text {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text);
+    line-height: 1.5;
+    resize: none;
+    min-height: 20px;
+  }
+
+  .item-text:focus { outline: none; }
+
+  .item-delete {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: #cbd5e1;
+    font-size: 14px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    opacity: 0;
+  }
+
+  .item-row:hover .item-delete { opacity: 1; }
+  .item-delete:hover { color: #dc2626; background: #fee2e2; }
+
+  .question-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: #fffbeb;
+    border: 1.5px solid #fde68a;
+  }
+
+  .question-row input[type="checkbox"] {
+    margin-top: 3px;
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+  }
+
+  .question-row.resolved {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+    text-decoration: line-through;
+    opacity: 0.6;
+  }
+
+  .panel-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  /* Overlay */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.15);
+    z-index: 50;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+
+  .overlay.show { opacity: 1; pointer-events: auto; }
+
+  .footer-note {
+    text-align: center;
+    margin-top: 40px;
+    font-size: 13px;
+    color: var(--text-muted);
+    font-style: italic;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--text);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 13px;
+    z-index: 200;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* Loading overlay */
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 300;
+    gap: 16px;
+    transition: opacity 0.3s;
+  }
+
+  .loading-overlay.hidden { opacity: 0; pointer-events: none; }
+
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #e2e8f0;
+    border-top-color: var(--admin);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div style="color:var(--text-muted);font-size:14px;">正在连接数据库...</div>
+</div>
+
+<div class="container">
+  <div class="header">
+    <h1>团购每周流程</h1>
+    <div class="header-actions">
+      <div class="sync-status">
+        <div class="sync-dot" id="syncDot"></div>
+        <span id="syncText">连接中...</span>
+      </div>
+      <button class="btn" onclick="exportData()">📥 导出</button>
+      <button class="btn" onclick="document.getElementById('importInput').click()">📤 导入</button>
+      <input type="file" id="importInput" accept=".json" style="display:none" onchange="importData(event)">
+      <button class="btn danger" onclick="resetData()">🔄 重置</button>
+    </div>
+  </div>
+  <p class="subtitle">点击卡片查看/编辑详情 · 拖拽卡片调整位置 · 多人实时同步</p>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--admin)"></div><span>团长（管理员）</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--user)"></div><span>团员（用户）</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--volunteer)"></div><span>义工（配送）</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--supplier)"></div><span>货源（供应商）</span></div>
+  </div>
+
+  <div class="timeline" id="timeline"></div>
+
+  <p class="footer-note">* 具体时间可能因周而异，以团长实际通知为准</p>
+</div>
+
+<!-- Side Panel -->
+<div class="overlay" id="overlay" onclick="closePanel()"></div>
+<div class="side-panel" id="sidePanel">
+  <div class="panel-header">
+    <div class="panel-header-icon" id="panelIcon"></div>
+    <div class="panel-header-text">
+      <div class="panel-title" id="panelTitle"></div>
+      <div class="panel-subtitle" id="panelSubtitle"></div>
+    </div>
+    <button class="panel-close" onclick="closePanel()">✕</button>
+  </div>
+  <div class="panel-body" id="panelBody"></div>
+  <div class="panel-footer">
+    <button class="btn primary" onclick="closePanel()" style="flex:1">完成</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================
+// FIREBASE CONFIG
+// ============================
+// !!REPLACE_WITH_FIREBASE_CONFIG!!
+const firebaseConfig = {
+  apiKey: "AIzaSyCUYrMTmc3RrnUgw4QWp0TVqz39Ax67nlM",
+  authDomain: "delivery-flow-a62cf.firebaseapp.com",
+  databaseURL: "https://delivery-flow-a62cf-default-rtdb.firebaseio.com",
+  projectId: "delivery-flow-a62cf",
+  storageBucket: "delivery-flow-a62cf.firebasestorage.app",
+  messagingSenderId: "915897504981",
+  appId: "1:915897504981:web:f45bf1c0020b15cea6be5c",
+  measurementId: "G-H0HR0ZQMLH"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const dataRef = db.ref('tuangou-flow');
+
+// ============================
+// DEFAULT DATA
+// ============================
+const DEFAULT_DATA = {
+  phases: [
+    {
+      id: "phase1",
+      label: "阶段一 · 开团与下单",
+      rows: [
+        {
+          columns: [
+            [
+              {
+                id: "open-round",
+                icon: "📦", title: "开团",
+                desc: "上架本周商品、设置开团/截团时间、发布开团公告",
+                role: "admin", roleLabel: "团长",
+                details: {
+                  known: "• 团长在后台创建本周团购，设置开团/截团时间\n• 从商品库中选择本周商品（支持搜索、一键复制上周商品）\n• 可新增商品到商品库\n• 支持定时自动开团/截团\n• 开团后发布通知到微信群",
+                  pains: [
+                    { text: "手动在微信群接龙下单，容易遗漏、统计困难", priority: "P0", note: "核心痛点" },
+                    { text: "商品上架流程的具体痛点？", priority: "P1", note: "待确认" }
+                  ],
+                  keeps: [
+                    { text: "微信群发通知文案（开团公告、商品概览）", priority: "P0", note: "小程序自动生成，团长复制" }
+                  ],
+                  questions: [
+                    { text: "还有哪些现有做法团长们希望保留？", resolved: false },
+                    { text: "商品分类列表是否完整？还有其他分类吗？", resolved: false }
+                  ]
+                }
+              },
+              {
+                id: "notify-open",
+                icon: "📢", title: "发布通知",
+                desc: "生成开团文案，复制到微信群",
+                role: "admin", roleLabel: "团长",
+                details: {
+                  known: "• 小程序后台自动生成开团文案\n• 包含本周商品概览 + 小程序码/链接\n• 团长复制文案发到微信群",
+                  pains: [],
+                  keeps: [
+                    { text: "通知先发到微信群（用户习惯在群里看通知）", priority: "P0", note: "" }
+                  ],
+                  questions: [
+                    { text: "微信群通知的格式/风格有什么偏好？", resolved: false },
+                    { text: "团员最常错过哪类通知？", resolved: false }
+                  ]
+                }
+              }
+            ],
+            [
+              {
+                id: "place-order",
+                icon: "🛒", title: "团员下单",
+                desc: "浏览商品、加入购物车、选配送方式、提交订单",
+                role: "user", roleLabel: "团员",
+                details: {
+                  known: "• 团员浏览本周商品，按分类筛选\n• 选择数量加入购物车\n• 选择配送方式（团购到镇/固定取货点/直送到家）\n• 填写必要信息（根据配送方式不同）\n• 提交订单\n• 截团前可自由修改/取消订单",
+                  pains: [
+                    { text: "微信接龙格式不统一，团长需人工整理", priority: "P0", note: "" },
+                    { text: "团员看不到实时库存/已售数量", priority: "P1", note: "待确认是否需要" }
+                  ],
+                  keeps: [],
+                  questions: [
+                    { text: "团员下单时还有哪些不方便的地方？", resolved: false },
+                    { text: "是否需要显示实时库存/已售数量？", resolved: false }
+                  ]
+                }
+              },
+              {
+                id: "wishlist-signup",
+                icon: "📝", title: "Wishlist / 报名",
+                desc: "提交想买的商品、报名本镇收货",
+                role: "user", roleLabel: "团员",
+                details: {
+                  known: "• 团员可提交想要的商品（从商品库选择或自由填写）\n• 团长在截团后查看并尽量满足\n• Wishlist 状态：待处理 → 已加入订单 / 无法满足\n• 团员可报名「本周我家收货」，提供收货地址\n• 同镇其他团员下单时可看到取货地址",
+                  pains: [],
+                  keeps: [],
+                  questions: [
+                    { text: "Wishlist 使用频率高吗？", resolved: false },
+                    { text: "收货报名的激励机制？如免运费？", resolved: false }
+                  ]
+                }
+              },
+              {
+                id: "close-round",
+                icon: "🔒", title: "截团",
+                desc: "手动或定时截团，停止接单",
+                role: "admin", roleLabel: "团长",
+                details: {
+                  known: "• 团长手动截团或设置定时自动截团\n• 截团后团员不能再下新单\n• 截团后修改/取消订单需团长批准",
+                  pains: [],
+                  keeps: [
+                    { text: "截团前发送提醒（还有 X 小时截团）", priority: "P1", note: "" }
+                  ],
+                  questions: [
+                    { text: "截团时间是否固定？比如每次都是周三晚？", resolved: false }
+                  ]
+                }
+              }
+            ],
+            [], [], []
+          ]
+        }
+      ],
+      spanBars: [
+        { startCol: 1, endCol: 3, icon: "🕐", text: "下单窗口（周二 ~ 周三晚截团）", colorType: "user" }
+      ]
+    },
+    {
+      id: "phase2",
+      label: "阶段二 · 调整与出账",
+      rows: [
+        {
+          columns: [
+            [],
+            [
+              {
+                id: "supplier-check",
+                icon: "🤝", title: "沟通货源",
+                desc: "确认各商品实际供应情况",
+                role: "supplier", roleLabel: "货源",
+                details: {
+                  known: "• 截团后团长与货源/供应商沟通\n• 确认各商品的实际供应情况\n• 确定哪些商品缺货、需要换货、可以加货",
+                  pains: [],
+                  keeps: [],
+                  questions: [
+                    { text: "货源沟通主要通过什么方式？微信？电话？", resolved: false },
+                    { text: "货源是否有自己的系统可以对接？", resolved: false }
+                  ]
+                }
+              }
+            ],
+            [
+              {
+                id: "adjust-orders",
+                icon: "✏️", title: "调整订单",
+                desc: "处理缺货（取消/减量/换货/加货）、处理 wishlist",
+                role: "admin", roleLabel: "团长",
+                details: {
+                  known: "• 整体取消商品：从所有订单中移除\n• 减少数量：如一箱→半箱，批量修改所有含此商品的订单\n• 换货：商品 A → 商品 B，通知受影响团员\n• 紧急加货：新增商品，可能有不同截止时间\n• 处理 wishlist：将可满足的 wishlist 加入对应团员订单",
+                  pains: [
+                    { text: "调整订单后需逐一通知受影响团员，工作量大", priority: "P0", note: "" },
+                    { text: "换货/减量需要手动修改每个订单", priority: "P0", note: "" }
+                  ],
+                  keeps: [
+                    { text: "团长手动确认每个调整项（非全自动）", priority: "P0", note: "调整涉及成本判断" }
+                  ],
+                  questions: [
+                    { text: "调整期还有哪些具体困难？", resolved: false }
+                  ]
+                }
+              },
+              {
+                id: "notify-adjust",
+                icon: "📋", title: "发调整通知",
+                desc: "自动生成变更文案，通知受影响团员",
+                role: "admin", roleLabel: "团长",
+                details: {
+                  known: "• 系统自动生成调整通知文案\n• 列出被取消的商品\n• 列出数量变化（原数量→新数量）\n• 列出换货（A→B）\n• 列出受影响的团员名单\n• 团长复制文案发到群里",
+                  pains: [],
+                  keeps: [],
+                  questions: []
+                }
+              },
+              {
+                id: "generate-bill",
+                icon: "💰", title: "出账单",
+                desc: "生成最终金额、Venmo 付款链接",
+                role: "admin", roleLabel: "团长",
+                details: {
+                  known: "• 团长确认调整完成后点击「出最终账单」\n• 系统计算每人最终金额：商品小计 + 配送费 − 余额抵扣\n• 生成 Venmo 付款链接（预填金额和备注/订单号）\n• 周状态变为 finalized\n• 所有订单状态变为「已确认」",
+                  pains: [
+                    { text: "手动计算每人金额，容易出错", priority: "P0", note: "" },
+                    { text: "跟踪谁付了谁没付，靠人工记录", priority: "P0", note: "" }
+                  ],
+                  keeps: [
+                    { text: "使用 Venmo 付款", priority: "P0", note: "所有人都有 Venmo" }
+                  ],
+                  questions: [
+                    { text: "Venmo 付款有什么额外痛点？备注格式、金额不对等", resolved: false },
+                    { text: "是否有人用 Zelle 或其他方式付款？", resolved: false }
+                  ]
+                }
+              }
+            ],
+            [], []
+          ]
+        }
+      ],
+      spanBars: []
+    },
+    {
+      id: "phase3",
+      label: "阶段三 · 付款与送货",
+      rows: [
+        {
+          columns: [
+            [], [],
+            [
+              {
+                id: "user-pay",
+                icon: "💳", title: "团员付款",
+                desc: "点击 Venmo 链接完成付款",
+                role: "user", roleLabel: "团员",
+                details: {
+                  known: "• 团员收到账单通知\n• 订单详情页显示应付金额和 Venmo 付款链接\n• 点击链接跳转 Venmo 完成付款\n• 支持查看未付款列表方便催款",
+                  pains: [],
+                  keeps: [],
+                  questions: []
+                }
+              },
+              {
+                id: "confirm-pay",
+                icon: "✅", title: "确认付款",
+                desc: "核实收款、标记已付、催款未付",
+                role: "admin", roleLabel: "团长",
+                details: {
+                  known: "• 团长在后台手动标记「已付款」\n• 支持查看未付款列表\n• 可生成催款文案",
+                  pains: [
+                    { text: "需要人工对照 Venmo 记录逐一确认，耗时", priority: "P1", note: "Phase 3 计划半自动对账" }
+                  ],
+                  keeps: [],
+                  questions: [
+                    { text: "退款频率高吗？主要原因是什么？", resolved: false },
+                    { text: "团员对余额抵扣规则是否理解/接受？", resolved: false },
+                    { text: "是否需要余额过期机制？", resolved: false }
+                  ]
+                }
+              }
+            ],
+            [
+              {
+                id: "delivery",
+                icon: "🚗", title: "义工送货",
+                desc: "按镇子送货单配送，送达后标记",
+                role: "volunteer", roleLabel: "义工",
+                details: {
+                  known: "• 团长指定本周义工及负责的镇子\n• 系统按镇子生成送货单\n• 送货单含：地址、商品清单（中英双语）、金额\n• 支持手机查看 + 导出 PDF/Excel\n• 义工送完标记「已送达」",
+                  pains: [
+                    { text: "手动整理送货清单，按镇子分组很耗时", priority: "P0", note: "" },
+                    { text: "义工看不懂中文商品名", priority: "P1", note: "需中英双语" }
+                  ],
+                  keeps: [
+                    { text: "义工是志愿性质，每周团长指定", priority: "P0", note: "" }
+                  ],
+                  questions: [
+                    { text: "送货流程还有什么痛点？路线规划？送货顺序？", resolved: false },
+                    { text: "义工激励机制？如免运费、优先选货？", resolved: false },
+                    { text: "固定取货点的具体位置？", resolved: false },
+                    { text: "各镇配送费的具体数字？", resolved: false },
+                    { text: "免运费门槛金额？", resolved: false }
+                  ]
+                }
+              },
+              {
+                id: "receive",
+                icon: "📦", title: "团员收货",
+                desc: "到镇取货 / 取货点取 / 家门口收",
+                role: "user", roleLabel: "团员",
+                details: {
+                  known: "• 团购到镇：去本镇收货人家中取货\n• 固定取货点：去指定取货点取\n• 直送到家：等待送货上门",
+                  pains: [],
+                  keeps: [],
+                  questions: [
+                    { text: "是否有其他配送方式的需求？", resolved: false }
+                  ]
+                }
+              }
+            ],
+            [
+              {
+                id: "feedback",
+                icon: "⭐", title: "评价反馈",
+                desc: "提交商品评价和反馈图片",
+                role: "user", roleLabel: "团员",
+                style: "dashed",
+                details: {
+                  known: "• 团员可提交文字+图片评价\n• 评价状态为 pending，团长审核后展示\n• 已批准的评价显示在商品详情页",
+                  pains: [],
+                  keeps: [],
+                  questions: [
+                    { text: "评价功能的优先级？是否 MVP 必需？", resolved: false }
+                  ]
+                }
+              }
+            ]
+          ]
+        }
+      ],
+      spanBars: [
+        { startCol: 3, endCol: 5, icon: "💵", text: "付款窗口（周四 ~ 周五）", colorType: "user" }
+      ]
+    }
+  ]
+};
+
+// ============================
+// STATE
+// ============================
+const DAY_LABELS = [
+  { en: "Tuesday", zh: "周二" },
+  { en: "Wednesday", zh: "周三" },
+  { en: "Thursday", zh: "周四" },
+  { en: "Friday", zh: "周五" },
+  { en: "Weekend", zh: "周末" }
+];
+
+let data = null;
+let selectedCardId = null;
+let dragSourceInfo = null;
+let saveTimeout = null;
+let isInitialLoad = true;
+
+// ============================
+// FIREBASE SYNC
+// ============================
+function initFirebase() {
+  // Listen for data changes (real-time sync)
+  dataRef.on('value', (snapshot) => {
+    const val = snapshot.val();
+    if (val) {
+      data = val;
+    } else {
+      // First time — seed with default data
+      data = JSON.parse(JSON.stringify(DEFAULT_DATA));
+      dataRef.set(data);
+    }
+
+    render();
+
+    // Re-render panel if open
+    if (selectedCardId) {
+      const card = findCard(selectedCardId);
+      if (card) renderPanelBody(card);
+    }
+
+    if (isInitialLoad) {
+      isInitialLoad = false;
+      document.getElementById('loadingOverlay').classList.add('hidden');
+    }
+
+    setSyncStatus('connected');
+  }, (error) => {
+    console.error('Firebase error:', error);
+    setSyncStatus('error');
+    // Fallback to localStorage
+    const saved = localStorage.getItem('tuangou_flow_backup');
+    if (saved && !data) {
+      data = JSON.parse(saved);
+      render();
+      document.getElementById('loadingOverlay').classList.add('hidden');
+    }
+  });
+
+  // Connection state
+  db.ref('.info/connected').on('value', (snap) => {
+    setSyncStatus(snap.val() ? 'connected' : 'disconnected');
+  });
+}
+
+function setSyncStatus(status) {
+  const dot = document.getElementById('syncDot');
+  const text = document.getElementById('syncText');
+  dot.className = 'sync-dot';
+  switch (status) {
+    case 'connected':
+      dot.classList.add('connected');
+      text.textContent = '已同步';
+      break;
+    case 'syncing':
+      dot.classList.add('syncing');
+      text.textContent = '同步中...';
+      break;
+    case 'disconnected':
+      text.textContent = '离线';
+      break;
+    case 'error':
+      text.textContent = '连接失败';
+      break;
+  }
+}
+
+function save() {
+  // Debounce writes to Firebase
+  if (saveTimeout) clearTimeout(saveTimeout);
+  setSyncStatus('syncing');
+  saveTimeout = setTimeout(() => {
+    dataRef.set(data).then(() => {
+      setSyncStatus('connected');
+    }).catch((err) => {
+      console.error('Save error:', err);
+      setSyncStatus('error');
+    });
+    // Also backup to localStorage
+    localStorage.setItem('tuangou_flow_backup', JSON.stringify(data));
+  }, 500);
+}
+
+// ============================
+// RENDER
+// ============================
+function render() {
+  if (!data) return;
+  const tl = document.getElementById("timeline");
+  let html = "";
+
+  DAY_LABELS.forEach(d => {
+    html += `<div class="day-header"><div class="day-label">${d.en}</div><div class="day-name">${d.zh}</div></div>`;
+  });
+
+  html += `<div class="connector-row">`;
+  for (let i = 0; i < 5; i++) html += `<div class="connector-dot"></div>`;
+  html += `</div>`;
+
+  data.phases.forEach(phase => {
+    html += `<div class="phase-row"><div class="phase-line"></div><div class="phase-label">${phase.label}</div><div class="phase-line"></div></div>`;
+
+    phase.rows.forEach((row, rowIdx) => {
+      html += `<div class="activities-row">`;
+      row.columns.forEach((cards, colIdx) => {
+        html += `<div class="day-column" data-phase="${phase.id}" data-row="${rowIdx}" data-col="${colIdx}"
+                      ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">`;
+        if (cards) {
+          cards.forEach((card, cardIdx) => {
+            const isSelected = selectedCardId === card.id;
+            const painCount = card.details && card.details.pains ? card.details.pains.length : 0;
+            const qCount = card.details && card.details.questions ? card.details.questions.filter(q => !q.resolved).length : 0;
+            const borderStyle = card.style === 'dashed' ? 'border-style:dashed;opacity:0.8;' : '';
+
+            html += `<div class="activity ${card.role} ${isSelected ? 'selected' : ''}" style="${borderStyle}"
+                          draggable="true" data-card-id="${card.id}"
+                          onclick="openPanel('${card.id}')"
+                          ondragstart="onDragStart(event, '${phase.id}', ${rowIdx}, ${colIdx}, ${cardIdx})"
+                          ondragend="onDragEnd(event)">
+                       <div class="drag-handle">⠿</div>
+                       <div class="activity-icon">${card.icon}</div>
+                       <div class="activity-title">${card.title}</div>
+                       <div class="activity-desc">${card.desc}</div>
+                       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                         <div class="activity-role">${card.roleLabel}</div>`;
+            if (painCount > 0) html += `<span class="card-badge pain">${painCount} 痛点</span>`;
+            if (qCount > 0) html += `<span class="card-badge open">${qCount} 待确认</span>`;
+            html += `</div></div>`;
+            if (cardIdx < cards.length - 1) html += `<div class="arrow-down">▼</div>`;
+          });
+        }
+        html += `</div>`;
+      });
+      html += `</div>`;
+    });
+
+    if (phase.spanBars && phase.spanBars.length > 0) {
+      html += `<div class="span-bar">`;
+      let col = 1;
+      phase.spanBars.forEach(bar => {
+        while (col < bar.startCol) { html += `<div></div>`; col++; }
+        html += `<div class="span-label" style="grid-column:${bar.startCol}/${bar.endCol};background:var(--${bar.colorType}-bg);border:1.5px solid var(--${bar.colorType}-border);color:var(--${bar.colorType});">
+                   <span class="icon">${bar.icon}</span> ${bar.text}
+                 </div>`;
+        col = bar.endCol;
+      });
+      while (col <= 5) { html += `<div></div>`; col++; }
+      html += `</div>`;
+    }
+  });
+
+  tl.innerHTML = html;
+}
+
+// ============================
+// PANEL
+// ============================
+function openPanel(cardId) {
+  const card = findCard(cardId);
+  if (!card) return;
+  selectedCardId = cardId;
+  render();
+  document.getElementById("panelIcon").textContent = card.icon;
+  document.getElementById("panelTitle").textContent = card.title;
+  document.getElementById("panelSubtitle").textContent = card.desc;
+  renderPanelBody(card);
+  document.getElementById("sidePanel").classList.add("open");
+  document.getElementById("overlay").classList.add("show");
+  document.body.classList.add("panel-open");
+}
+
+function closePanel() {
+  document.getElementById("sidePanel").classList.remove("open");
+  document.getElementById("overlay").classList.remove("show");
+  document.body.classList.remove("panel-open");
+  selectedCardId = null;
+  render();
+}
+
+function renderPanelBody(card) {
+  const body = document.getElementById("panelBody");
+  const d = card.details || { known: "", pains: [], keeps: [], questions: [] };
+  let html = "";
+
+  html += `<div class="panel-section">
+    <div class="panel-section-header">
+      <div class="panel-section-title"><span class="section-icon">📌</span> 已知信息</div>
+    </div>
+    <textarea class="editable-area" rows="6" placeholder="记录已知的流程和规则..."
+              oninput="updateKnown('${card.id}', this.value)">${d.known || ''}</textarea>
+  </div>`;
+
+  html += `<div class="panel-section">
+    <div class="panel-section-header">
+      <div class="panel-section-title"><span class="section-icon">🔴</span> 当前痛点</div>
+      <button class="add-btn" onclick="addItem('${card.id}', 'pains')">+ 添加痛点</button>
+    </div>
+    <div class="item-list" id="pains-${card.id}">`;
+  (d.pains || []).forEach((item, idx) => {
+    html += renderItemRow(card.id, 'pains', idx, item, 'pain');
+  });
+  if (!d.pains || d.pains.length === 0) html += `<div style="font-size:13px;color:var(--text-muted);padding:8px 0;">暂无痛点记录</div>`;
+  html += `</div></div>`;
+
+  html += `<div class="panel-section">
+    <div class="panel-section-header">
+      <div class="panel-section-title"><span class="section-icon">🟢</span> 希望保留</div>
+      <button class="add-btn" onclick="addItem('${card.id}', 'keeps')">+ 添加</button>
+    </div>
+    <div class="item-list" id="keeps-${card.id}">`;
+  (d.keeps || []).forEach((item, idx) => {
+    html += renderItemRow(card.id, 'keeps', idx, item, 'keep');
+  });
+  if (!d.keeps || d.keeps.length === 0) html += `<div style="font-size:13px;color:var(--text-muted);padding:8px 0;">暂无记录</div>`;
+  html += `</div></div>`;
+
+  html += `<div class="panel-section">
+    <div class="panel-section-header">
+      <div class="panel-section-title"><span class="section-icon">❓</span> 待确认问题</div>
+      <button class="add-btn" onclick="addQuestion('${card.id}')">+ 添加问题</button>
+    </div>
+    <div class="item-list" id="questions-${card.id}">`;
+  (d.questions || []).forEach((q, idx) => {
+    html += `<div class="question-row ${q.resolved ? 'resolved' : ''}">
+      <input type="checkbox" ${q.resolved ? 'checked' : ''} onchange="toggleQuestion('${card.id}', ${idx}, this.checked)">
+      <textarea class="item-text" oninput="updateQuestion('${card.id}', ${idx}, this.value)">${q.text}</textarea>
+      <button class="item-delete" onclick="deleteQuestion('${card.id}', ${idx})">✕</button>
+    </div>`;
+  });
+  if (!d.questions || d.questions.length === 0) html += `<div style="font-size:13px;color:var(--text-muted);padding:8px 0;">暂无待确认问题</div>`;
+  html += `</div></div>`;
+
+  body.innerHTML = html;
+  body.querySelectorAll('.item-text').forEach(autoResize);
+  body.querySelectorAll('.editable-area').forEach(autoResize);
+}
+
+function renderItemRow(cardId, listType, idx, item, rowClass) {
+  const p = item.priority || 'P1';
+  return `<div class="item-row ${rowClass}">
+    <select class="item-priority ${p}" onchange="updateItemPriority('${cardId}', '${listType}', ${idx}, this.value); this.className='item-priority '+this.value;">
+      <option ${p === 'P0' ? 'selected' : ''}>P0</option>
+      <option ${p === 'P1' ? 'selected' : ''}>P1</option>
+      <option ${p === 'P2' ? 'selected' : ''}>P2</option>
+      <option ${p === 'P3' ? 'selected' : ''}>P3</option>
+    </select>
+    <textarea class="item-text" oninput="updateItemText('${cardId}', '${listType}', ${idx}, this.value)">${item.text || ''}</textarea>
+    <button class="item-delete" onclick="deleteItem('${cardId}', '${listType}', ${idx})">✕</button>
+  </div>`;
+}
+
+// ============================
+// DATA OPERATIONS
+// ============================
+function findCard(id) {
+  if (!data || !data.phases) return null;
+  for (const phase of data.phases) {
+    for (const row of phase.rows) {
+      for (const col of row.columns) {
+        if (!col) continue;
+        for (const card of col) {
+          if (card.id === id) return card;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function updateKnown(cardId, value) {
+  const card = findCard(cardId);
+  if (card) { card.details.known = value; save(); }
+}
+
+function updateItemText(cardId, listType, idx, value) {
+  const card = findCard(cardId);
+  if (card && card.details[listType] && card.details[listType][idx]) {
+    card.details[listType][idx].text = value; save();
+  }
+}
+
+function updateItemPriority(cardId, listType, idx, value) {
+  const card = findCard(cardId);
+  if (card && card.details[listType] && card.details[listType][idx]) {
+    card.details[listType][idx].priority = value; save(); render();
+  }
+}
+
+function addItem(cardId, listType) {
+  const card = findCard(cardId);
+  if (!card) return;
+  if (!card.details[listType]) card.details[listType] = [];
+  card.details[listType].push({ text: "", priority: "P1", note: "" });
+  save(); renderPanelBody(card);
+  setTimeout(() => {
+    const list = document.getElementById(`${listType}-${cardId}`);
+    if (list) { const last = list.querySelector('.item-row:last-child .item-text'); if (last) last.focus(); }
+  }, 50);
+}
+
+function deleteItem(cardId, listType, idx) {
+  const card = findCard(cardId);
+  if (!card) return;
+  card.details[listType].splice(idx, 1);
+  save(); renderPanelBody(card); render();
+}
+
+function addQuestion(cardId) {
+  const card = findCard(cardId);
+  if (!card) return;
+  if (!card.details.questions) card.details.questions = [];
+  card.details.questions.push({ text: "", resolved: false });
+  save(); renderPanelBody(card);
+  setTimeout(() => {
+    const list = document.getElementById(`questions-${cardId}`);
+    if (list) { const last = list.querySelector('.question-row:last-child .item-text'); if (last) last.focus(); }
+  }, 50);
+}
+
+function updateQuestion(cardId, idx, value) {
+  const card = findCard(cardId);
+  if (card && card.details.questions && card.details.questions[idx]) {
+    card.details.questions[idx].text = value; save();
+  }
+}
+
+function toggleQuestion(cardId, idx, checked) {
+  const card = findCard(cardId);
+  if (card && card.details.questions && card.details.questions[idx]) {
+    card.details.questions[idx].resolved = checked;
+    save(); renderPanelBody(card); render();
+  }
+}
+
+function deleteQuestion(cardId, idx) {
+  const card = findCard(cardId);
+  if (!card) return;
+  card.details.questions.splice(idx, 1);
+  save(); renderPanelBody(card); render();
+}
+
+// ============================
+// DRAG AND DROP
+// ============================
+function onDragStart(e, phaseId, rowIdx, colIdx, cardIdx) {
+  dragSourceInfo = { phaseId, rowIdx, colIdx, cardIdx };
+  e.target.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', '');
+}
+
+function onDragEnd(e) {
+  e.target.classList.remove('dragging');
+  document.querySelectorAll('.day-column').forEach(el => el.classList.remove('drag-over'));
+  dragSourceInfo = null;
+}
+
+function onDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.classList.add('drag-over');
+}
+
+function onDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+
+function onDrop(e) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if (!dragSourceInfo) return;
+
+  const tgtPhaseId = e.currentTarget.dataset.phase;
+  const tgtRowIdx = parseInt(e.currentTarget.dataset.row);
+  const tgtColIdx = parseInt(e.currentTarget.dataset.col);
+
+  const srcPhase = data.phases.find(p => p.id === dragSourceInfo.phaseId);
+  const srcCol = srcPhase.rows[dragSourceInfo.rowIdx].columns[dragSourceInfo.colIdx];
+  const [card] = srcCol.splice(dragSourceInfo.cardIdx, 1);
+
+  const tgtPhase = data.phases.find(p => p.id === tgtPhaseId);
+  if (!tgtPhase.rows[tgtRowIdx].columns[tgtColIdx]) tgtPhase.rows[tgtRowIdx].columns[tgtColIdx] = [];
+  tgtPhase.rows[tgtRowIdx].columns[tgtColIdx].push(card);
+
+  dragSourceInfo = null;
+  save(); render();
+  showToast(`已移动「${card.title}」`);
+}
+
+// ============================
+// IMPORT / EXPORT
+// ============================
+function exportData() {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `tuangou-requirements-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast("已导出 JSON 文件");
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      data = JSON.parse(e.target.result);
+      save(); render();
+      showToast("已导入数据");
+    } catch(err) {
+      showToast("导入失败：文件格式错误");
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function resetData() {
+  if (!confirm("确定要重置所有数据？这将清除所有编辑内容，且所有协作者都会受到影响。")) return;
+  data = JSON.parse(JSON.stringify(DEFAULT_DATA));
+  save(); render(); closePanel();
+  showToast("已重置为默认数据");
+}
+
+// ============================
+// UTILS
+// ============================
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+  el.addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = this.scrollHeight + 'px';
+  });
+}
+
+function showToast(msg) {
+  const toast = document.getElementById("toast");
+  toast.textContent = msg;
+  toast.classList.add("show");
+  setTimeout(() => toast.classList.remove("show"), 2000);
+}
+
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePanel(); });
+
+// Start
+initFirebase();
+</script>
+</body>
+</html>
