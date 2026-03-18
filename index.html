@@ -2274,14 +2274,26 @@ function onGridDragOver(e) {
     }
   }
 
-  dropTargetInfo = { phaseId: phaseId, rowIdx: rowIdx, colIdx: colIdx, insertBeforeId: insertBeforeId };
+  // Get the dragged card's span to size the placeholder correctly
+  var draggedCard = findCard(dragSourceInfo.cardId);
+  var dragSpan = (draggedCard && draggedCard.spanDays) || 1;
+  // Use the dragged card's original colIdx for the placeholder column
+  // (unless it's being moved to a new column, use the mouse column)
+  var placeholderCol = colIdx;
+  var placeholderSpan = dragSpan;
+  // Clamp so it doesn't exceed 7 columns
+  if (placeholderCol + placeholderSpan > 7) {
+    placeholderSpan = 7 - placeholderCol;
+  }
 
-  // Show placeholder
+  dropTargetInfo = { phaseId: phaseId, rowIdx: rowIdx, colIdx: placeholderCol, insertBeforeId: insertBeforeId };
+
+  // Show placeholder matching the dragged card's size
   clearPlaceholder();
   var placeholder = document.createElement('div');
   placeholder.className = 'drop-placeholder';
-  placeholder.style.gridColumn = (colIdx + 1) + ' / span 1';
-  placeholder.style.minHeight = '40px';
+  placeholder.style.gridColumn = (placeholderCol + 1) + ' / span ' + placeholderSpan;
+  placeholder.style.minHeight = '50px';
 
   if (insertBeforeId) {
     var beforeEl = gridEl.querySelector('[data-card-id="' + insertBeforeId + '"]');
