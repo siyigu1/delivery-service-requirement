@@ -1569,14 +1569,17 @@ function save() {
 // Given a list of cards with colIdx and spanDays, compute gridRow for each
 // Returns an array of { card, gridRow, gridCol, gridSpan }
 function computeRowAllocations(cards) {
-  // Process cards in their original array order (order = intended visual sequence)
-  // This ensures that cards added later go below existing cards,
-  // and spanning cards properly block cells for cards that follow
-  var sorted = cards.slice();
+  // Process cards in original array order.
+  // Key rule: a card must be placed at or below the row of any
+  // previously-placed card that overlaps any of its columns.
+  // This ensures cards that come later in the array always appear
+  // visually below earlier cards in the same column space.
 
   // Track which (row, col) cells are occupied
-  // occupied[row][col] = true
   var occupied = {};
+  // Track the max row used per column by previously-placed cards
+  // so later cards in that column go below
+  var colMaxRow = {};
 
   function isFree(row, col, span) {
     for (var c = col; c < col + span; c++) {
@@ -1593,15 +1596,33 @@ function computeRowAllocations(cards) {
   }
 
   var result = [];
-  sorted.forEach(function(card) {
+  cards.forEach(function(card) {
     var col = card.colIdx || 0;
     var span = card.spanDays || 1;
-    // Find first available row
-    var row = 1;
+
+    // Minimum row: must be after any previously-placed card
+    // that touches any column this card occupies
+    var minRow = 1;
+    for (var c = col; c < col + span; c++) {
+      if (colMaxRow[c] && colMaxRow[c] >= minRow) {
+        minRow = colMaxRow[c] + 1;
+      }
+    }
+
+    // Find first available row starting from minRow
+    var row = minRow;
     while (!isFree(row, col, span)) {
       row++;
     }
     markOccupied(row, col, span);
+
+    // Update colMaxRow for all columns this card occupies
+    for (var c = col; c < col + span; c++) {
+      if (!colMaxRow[c] || row > colMaxRow[c]) {
+        colMaxRow[c] = row;
+      }
+    }
+
     result.push({ card: card, gridRow: row, gridCol: col + 1, gridSpan: span });
   });
 
