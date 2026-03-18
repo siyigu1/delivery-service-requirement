@@ -1208,87 +1208,82 @@ const DEFAULT_DATA = {
         {
           cards: [
             {
-              id: "open-round",
-              colIdx: 1, spanDays: 1,
-              icon: "开", title: "开团",
-              desc: "上架本周商品、设置开团/截团时间、发布开团公告",
+              id: "open-round", colIdx: 1, spanDays: 1,
+              title: "开团", desc: "上架本周商品、设置开团/截团时间、发布开团公告",
               role: "admin", roleLabel: "团长",
               details: {
-                known: "-- 团长在后台创建本周团购，设置开团/截团时间\n-- 从商品库中选择本周商品（支持搜索、一键复制上周商品）\n-- 可新增商品到商品库\n-- 支持定时自动开团/截团\n-- 开团后发布通知到微信群",
+                known: "-- 团长在后台创建本周团购，设置开团/截团时间\n-- 从商品库中选择本周商品（支持搜索、按名称/分类筛选）\n-- 可一键复制上周商品列表\n-- 可新增全新商品到商品库\n-- 支持定时自动开团/截团\n-- 商品字段：中文名(必填)、英文名(必填,送货单用)、图片(多张)、团购单位(如2lbs/一箱/半箱)、单位价格(美元)、分类(蔬菜/水果/零食/干货/冻品)、描述(选填)、团员反馈截图(选填)",
                 pains: [
-                  { text: "手动在微信群接龙下单，容易遗漏、统计困难", priority: "P0", note: "核心痛点" },
+                  { text: "手动在微信群接龙下单，容易遗漏、统计困难", priority: "P0", note: "核心痛点，小程序要解决的根本问题" },
                   { text: "商品上架流程的具体痛点？", priority: "P1", note: "待确认" }
                 ],
                 keeps: [
-                  { text: "微信群发通知文案（开团公告、商品概览）", priority: "P0", note: "小程序自动生成，团长复制" }
+                  { text: "微信群发通知文案（开团公告、商品概览）", priority: "P0", note: "小程序自动生成文案，团长复制到群里" }
                 ],
                 questions: [
                   { text: "还有哪些现有做法团长们希望保留？", resolved: false },
-                  { text: "商品分类列表是否完整？还有其他分类吗？", resolved: false }
+                  { text: "商品分类列表是否完整？是否还有其他分类？", resolved: false },
+                  { text: "商品单位的常见类型？除了 lbs/箱/包 还有什么？", resolved: false },
+                  { text: "是否需要 SKU/规格功能？比如同一商品不同规格？", resolved: false }
                 ]
               }
             },
             {
-              id: "notify-open",
-              colIdx: 1, spanDays: 1,
-              icon: "通", title: "发布通知",
-              desc: "生成开团文案，复制到微信群",
+              id: "notify-open", colIdx: 1, spanDays: 1,
+              title: "发布通知", desc: "生成开团文案，复制到微信群",
               role: "admin", roleLabel: "团长",
               details: {
-                known: "-- 小程序后台自动生成开团文案\n-- 包含本周商品概览 + 小程序码/链接\n-- 团长复制文案发到微信群",
+                known: "-- 小程序后台自动生成开团文案\n-- 开团通知包含：本周商品概览 + 小程序码/链接\n-- 截团提醒：还有 X 小时截团，本周已有 XX 人下单\n-- 账单通知：本周账单已出，请付款，Venmo: @xxx\n-- Welcome message / 周报：本周亮点、团员反馈精选、新品推荐\n-- 团长复制文案发到微信群",
                 pains: [],
                 keeps: [
                   { text: "通知先发到微信群（用户习惯在群里看通知）", priority: "P0", note: "" }
                 ],
                 questions: [
                   { text: "微信群通知的格式/风格有什么偏好？", resolved: false },
-                  { text: "团员最常错过哪类通知？", resolved: false }
+                  { text: "团员最常错过哪类通知？", resolved: false },
+                  { text: "是否有其他通知场景的需求？", resolved: false }
                 ]
               }
             },
             {
-              id: "place-order",
-              colIdx: 1, spanDays: 2,
-              icon: "购", title: "团员下单",
-              desc: "浏览商品、加入购物车、选配送方式、提交订单",
+              id: "place-order", colIdx: 1, spanDays: 2,
+              title: "团员下单", desc: "浏览商品、加入购物车、选配送方式、提交订单",
               role: "user", roleLabel: "团员",
               details: {
-                known: "-- 团员浏览本周商品，按分类筛选\n-- 选择数量加入购物车\n-- 选择配送方式（团购到镇/固定取货点/直送到家）\n-- 填写必要信息（根据配送方式不同）\n-- 提交订单\n-- 截团前可自由修改/取消订单",
+                known: "-- 首页：本周公告/Welcome message、商品列表（按分类浏览：蔬菜/水果/零食/干货/冻品/全部）、开团/截团状态和倒计时、团员反馈精选\n-- 商品详情：大图轮播(多张)、价格、描述、团员反馈截图、加购按钮、数量选择器(+/-)\n-- 购物车：商品列表、数量调整(+/-)、单价、小计、删除按钮、空购物车提示、底部汇总栏（已选 X 件，合计 $XX.XX）、「去下单」按钮\n-- 下单页：订单商品清单(从购物车带入)、选择配送方式(三选一)、联系电话、费用明细(商品合计 + 配送费 - 余额抵扣 = 应付金额)、备注栏、提交订单按钮\n-- 截团前可自由修改数量、删除商品、取消订单\n-- 截团后修改/取消需团长批准",
                 pains: [
-                  { text: "微信接龙格式不统一，团长需人工整理", priority: "P0", note: "" },
-                  { text: "团员看不到实时库存/已售数量", priority: "P1", note: "待确认是否需要" }
+                  { text: "微信接龙格式不统一，团长需人工整理所有订单", priority: "P0", note: "" },
+                  { text: "团员看不到实时库存/已售数量", priority: "P1", note: "待确认是否需要" },
+                  { text: "团员无法自助修改订单，需要私信团长", priority: "P0", note: "" }
                 ],
                 keeps: [],
                 questions: [
                   { text: "团员下单时还有哪些不方便的地方？", resolved: false },
-                  { text: "是否需要显示实时库存/已售数量？", resolved: false }
+                  { text: "是否需要显示实时库存/已售数量？", resolved: false },
+                  { text: "团员现在下单有哪些习惯/偏好需要保留？", resolved: false }
                 ]
               }
             },
             {
-              id: "wishlist-signup",
-              colIdx: 2, spanDays: 1,
-              icon: "愿", title: "Wishlist / 报名",
-              desc: "提交想买的商品、报名本镇收货",
+              id: "wishlist-signup", colIdx: 2, spanDays: 1,
+              title: "Wishlist / 收货报名", desc: "提交想买的商品、报名本镇收货",
               role: "user", roleLabel: "团员",
               details: {
-                known: "-- 团员可提交想要的商品（从商品库选择或自由填写）\n-- 团长在截团后查看并尽量满足\n-- Wishlist 状态：待处理 -> 已加入订单 / 无法满足\n-- 团员可报名「本周我家收货」，提供收货地址\n-- 同镇其他团员下单时可看到取货地址",
+                known: "Wishlist（补货申请）：\n-- 团员可提交想要的商品（从商品库中已下架的，或自由填写新商品名）\n-- 提交时填写：商品名 + 期望数量 + 备注\n-- 团长在截团后查看所有 wishlist\n-- 如可满足，团长将商品加入对应团员的订单\n-- Wishlist 状态：待处理 / 已加入订单 / 无法满足\n\n收货报名（团购到镇）：\n-- 开团后，团员可报名「本周我家收货」\n-- 报名时填写收货地址\n-- 同镇其他团员下单时可看到本周收货人信息和取货地址\n-- 如某镇无人报名收货，该镇团员只能选固定取货点或直送到家\n-- 报名后可取消（截团前）",
                 pains: [],
                 keeps: [],
                 questions: [
                   { text: "Wishlist 使用频率高吗？", resolved: false },
-                  { text: "收货报名的激励机制？如免运费？", resolved: false }
+                  { text: "收货报名的激励机制？如免运费、优先选货？", resolved: false }
                 ]
               }
             },
             {
-              id: "close-round",
-              colIdx: 2, spanDays: 1,
-              icon: "截", title: "截团",
-              desc: "手动或定时截团，停止接单",
+              id: "close-round", colIdx: 2, spanDays: 1,
+              title: "截团", desc: "手动或定时截团，停止接单",
               role: "admin", roleLabel: "团长",
               details: {
-                known: "-- 团长手动截团或设置定时自动截团\n-- 截团后团员不能再下新单\n-- 截团后修改/取消订单需团长批准",
+                known: "-- 团长手动截团，或设置定时自动截团\n-- 截团后团员不能再下新单\n-- 截团后修改/取消订单需团长批准\n-- 截团前 2 小时发送截团提醒\n-- 截团提醒文案：还有 X 小时截团！本周已有 XX 人下单，还没下单的抓紧啦~",
                 pains: [],
                 keeps: [
                   { text: "截团前发送提醒（还有 X 小时截团）", priority: "P1", note: "" }
@@ -1309,35 +1304,32 @@ const DEFAULT_DATA = {
         {
           cards: [
             {
-              id: "supplier-check",
-              colIdx: 2, spanDays: 1,
-              icon: "供", title: "沟通货源",
-              desc: "确认各商品实际供应情况",
+              id: "supplier-check", colIdx: 2, spanDays: 2,
+              title: "沟通货源", desc: "与供应商确认各商品实际供应情况",
               role: "supplier", roleLabel: "货源",
               details: {
-                known: "-- 截团后团长与货源/供应商沟通\n-- 确认各商品的实际供应情况\n-- 确定哪些商品缺货、需要换货、可以加货",
+                known: "-- 截团后团长与货源/供应商沟通\n-- 确认各商品的实际供应情况\n-- 确定哪些商品缺货、需要换货、可以加货\n-- 通常在周三晚到周四上午之间完成",
                 pains: [],
                 keeps: [],
                 questions: [
                   { text: "货源沟通主要通过什么方式？微信？电话？", resolved: false },
-                  { text: "货源是否有自己的系统可以对接？", resolved: false }
+                  { text: "货源是否有自己的系统可以对接？", resolved: false },
+                  { text: "货源通常多久能给出最终确认？", resolved: false }
                 ]
               }
             },
             {
-              id: "adjust-orders",
-              colIdx: 3, spanDays: 1,
-              icon: "调", title: "调整订单",
-              desc: "处理缺货（取消/减量/换货/加货）、处理 wishlist",
+              id: "adjust-orders", colIdx: 3, spanDays: 1,
+              title: "调整订单", desc: "处理缺货（取消/减量/换货/加货）、处理 wishlist",
               role: "admin", roleLabel: "团长",
               details: {
-                known: "-- 整体取消商品：从所有订单中移除\n-- 减少数量：如一箱->半箱，批量修改所有含此商品的订单\n-- 换货：商品 A -> 商品 B，通知受影响团员\n-- 紧急加货：新增商品，可能有不同截止时间\n-- 处理 wishlist：将可满足的 wishlist 加入对应团员订单",
+                known: "-- 整体取消商品：从所有订单中移除该商品\n-- 减少数量：如一箱->半箱，批量修改所有含此商品的订单\n-- 换货：商品 A -> 商品 B（如蓝莓A->蓝莓B），通知受影响团员\n-- 紧急加货：新增商品到本周，可能有不同于常规的截止时间\n-- 处理 wishlist：查看所有提交的 wishlist，将可满足的加入对应团员订单\n-- 受影响团员有时间窗口回复是否接受调整",
                 pains: [
-                  { text: "调整订单后需逐一通知受影响团员，工作量大", priority: "P0", note: "" },
-                  { text: "换货/减量需要手动修改每个订单", priority: "P0", note: "" }
+                  { text: "调整订单后需逐一通知受影响团员，工作量大", priority: "P0", note: "小程序自动生成调整通知" },
+                  { text: "换货/减量需要手动修改每个订单", priority: "P0", note: "小程序支持批量调整" }
                 ],
                 keeps: [
-                  { text: "团长手动确认每个调整项（非全自动）", priority: "P0", note: "调整涉及成本判断" }
+                  { text: "团长手动确认每个调整项（非全自动）", priority: "P0", note: "调整涉及货源和成本，需要人工判断" }
                 ],
                 questions: [
                   { text: "调整期还有哪些具体困难？", resolved: false }
@@ -1345,35 +1337,31 @@ const DEFAULT_DATA = {
               }
             },
             {
-              id: "notify-adjust",
-              colIdx: 3, spanDays: 1,
-              icon: "告", title: "发调整通知",
-              desc: "自动生成变更文案，通知受影响团员",
+              id: "notify-adjust", colIdx: 3, spanDays: 1,
+              title: "发调整通知", desc: "自动生成变更文案，通知受影响团员",
               role: "admin", roleLabel: "团长",
               details: {
-                known: "-- 系统自动生成调整通知文案\n-- 列出被取消的商品\n-- 列出数量变化（原数量->新数量）\n-- 列出换货（A->B）\n-- 列出受影响的团员名单\n-- 团长复制文案发到群里",
+                known: "-- 系统自动生成调整通知文案\n-- 列出被取消的商品（缺货）\n-- 列出数量变化的商品（原数量->新数量）\n-- 列出换货的商品（A->B）\n-- 列出紧急加货的商品（限时加购，截止明天中午）\n-- 列出受影响的团员名单（@张三 @李四）\n-- 团长复制文案发到微信群\n-- 受影响团员可在时间窗口内确认修改",
                 pains: [],
                 keeps: [],
                 questions: []
               }
             },
             {
-              id: "generate-bill",
-              colIdx: 3, spanDays: 1,
-              icon: "账", title: "出账单",
-              desc: "生成最终金额、Venmo 付款链接",
+              id: "generate-bill", colIdx: 3, spanDays: 1,
+              title: "出账单", desc: "生成每人最终金额、Venmo 付款链接",
               role: "admin", roleLabel: "团长",
               details: {
-                known: "-- 团长确认调整完成后点击「出最终账单」\n-- 系统计算每人最终金额：商品小计 + 配送费 - 余额抵扣\n-- 生成 Venmo 付款链接（预填金额和备注/订单号）\n-- 周状态变为 finalized\n-- 所有订单状态变为「已确认」",
+                known: "-- 团长确认所有调整完成后，点击「出最终账单」\n-- 系统计算每人最终金额：商品小计 + 配送费 - 余额抵扣\n-- 生成 Venmo 付款链接（venmo://paycharge?txn=pay&recipients=xxx&amount=xx.xx&note=订单号-姓名）\n-- 周状态变为 finalized，所有订单状态变为「已确认」\n-- 生成账单通知文案：本周账单已出！请打开小程序查看并完成付款，Venmo: @xxx",
                 pains: [
                   { text: "手动计算每人金额，容易出错", priority: "P0", note: "" },
                   { text: "跟踪谁付了谁没付，靠人工记录", priority: "P0", note: "" }
                 ],
                 keeps: [
-                  { text: "使用 Venmo 付款", priority: "P0", note: "所有人都有 Venmo" }
+                  { text: "使用 Venmo 付款（非微信支付）", priority: "P0", note: "美国场景，所有人都有 Venmo" }
                 ],
                 questions: [
-                  { text: "Venmo 付款有什么额外痛点？备注格式、金额不对等", resolved: false },
+                  { text: "Venmo 付款有什么额外痛点？备注格式不对、金额不对等", resolved: false },
                   { text: "是否有人用 Zelle 或其他方式付款？", resolved: false }
                 ]
               }
@@ -1389,28 +1377,24 @@ const DEFAULT_DATA = {
         {
           cards: [
             {
-              id: "user-pay",
-              colIdx: 3, spanDays: 2,
-              icon: "付", title: "团员付款",
-              desc: "点击 Venmo 链接完成付款",
+              id: "user-pay", colIdx: 3, spanDays: 2,
+              title: "团员付款", desc: "查看账单、点击 Venmo 链接完成付款",
               role: "user", roleLabel: "团员",
               details: {
-                known: "-- 团员收到账单通知\n-- 订单详情页显示应付金额和 Venmo 付款链接\n-- 点击链接跳转 Venmo 完成付款\n-- 支持查看未付款列表方便催款",
+                known: "-- 团员收到账单通知（微信群 + 小程序订阅消息）\n-- 订单详情页显示：应付金额（商品 + 配送费 - 余额抵扣）\n-- 显示 Venmo 付款链接（预填金额和备注/订单号）\n-- 团员点击链接跳转 Venmo 完成付款\n-- 订单状态跟踪：已下单 -> 已确认(出账单) -> 已付款 -> 配送中 -> 已送达\n-- 如有调整（缺货/换货），高亮显示调整内容和原因",
                 pains: [],
                 keeps: [],
                 questions: []
               }
             },
             {
-              id: "confirm-pay",
-              colIdx: 3, spanDays: 1,
-              icon: "确", title: "确认付款",
-              desc: "核实收款、标记已付、催款未付",
+              id: "confirm-pay", colIdx: 3, spanDays: 2,
+              title: "确认付款 / 催款", desc: "核实收款、标记已付、催款未付",
               role: "admin", roleLabel: "团长",
               details: {
-                known: "-- 团长在后台手动标记「已付款」\n-- 支持查看未付款列表\n-- 可生成催款文案",
+                known: "-- 本周账单概览：总金额、总订单数、已付/未付人数\n-- 逐人付款状态列表：团员名、应付金额、付款状态\n-- 一键标记已付款\n-- 未付款列表快捷入口，方便催款\n-- 可生成催款文案（列出未付款的人）\n-- 退款操作入口：退入余额（默认）或标记 Venmo 已退",
                 pains: [
-                  { text: "需要人工对照 Venmo 记录逐一确认，耗时", priority: "P1", note: "Phase 3 计划半自动对账" }
+                  { text: "需要人工对照 Venmo 收款记录逐一确认，非常耗时", priority: "P1", note: "Phase 3 计划半自动对账" }
                 ],
                 keeps: [],
                 questions: [
@@ -1421,53 +1405,47 @@ const DEFAULT_DATA = {
               }
             },
             {
-              id: "delivery",
-              colIdx: 4, spanDays: 1,
-              icon: "送", title: "义工送货",
-              desc: "按镇子送货单配送，送达后标记",
+              id: "delivery", colIdx: 4, spanDays: 1,
+              title: "义工送货", desc: "按镇子送货单配送，送达后标记",
               role: "volunteer", roleLabel: "义工",
               details: {
-                known: "-- 团长指定本周义工及负责的镇子\n-- 系统按镇子生成送货单\n-- 送货单含：地址、商品清单（中英双语）、金额\n-- 支持手机查看 + 导出 PDF/Excel\n-- 义工送完标记「已送达」",
+                known: "-- 团长在后台指定本周义工及负责的镇子\n-- 系统按镇子生成送货单，含：\n  - 镇子名（中英文）\n  - 收货地址（团购到镇时的收货人地址）\n  - 每个团员：姓名、地址（直送时）、电话\n  - 每个团员的商品清单（中英双语）、数量、金额\n  - 镇子小计\n-- 送货单支持手机查看 + 导出 PDF/Excel（A4 打印，按镇子分页）\n-- 送货单需要中英双语（义工可能不是华人）\n-- 义工送完后标记「已送达」，更新订单状态",
                 pains: [
                   { text: "手动整理送货清单，按镇子分组很耗时", priority: "P0", note: "" },
-                  { text: "义工看不懂中文商品名", priority: "P1", note: "需中英双语" }
+                  { text: "义工看不懂中文商品名", priority: "P1", note: "送货单需中英双语" }
                 ],
                 keeps: [
                   { text: "义工是志愿性质，每周团长指定", priority: "P0", note: "" }
                 ],
                 questions: [
                   { text: "送货流程还有什么痛点？路线规划？送货顺序？", resolved: false },
-                  { text: "义工激励机制？如免运费、优先选货？", resolved: false },
-                  { text: "固定取货点的具体位置？", resolved: false },
-                  { text: "各镇配送费的具体数字？", resolved: false },
-                  { text: "免运费门槛金额？", resolved: false }
+                  { text: "义工激励机制？如免运费、优先选货？", resolved: false }
                 ]
               }
             },
             {
-              id: "receive",
-              colIdx: 4, spanDays: 1,
-              icon: "收", title: "团员收货",
-              desc: "到镇取货 / 取货点取 / 家门口收",
+              id: "receive", colIdx: 4, spanDays: 1,
+              title: "团员收货", desc: "到镇取货 / 取货点取 / 家门口收",
               role: "user", roleLabel: "团员",
               details: {
-                known: "-- 团购到镇：去本镇收货人家中取货\n-- 固定取货点：去指定取货点取\n-- 直送到家：等待送货上门",
+                known: "三种配送方式：\n\n1. 团购到镇：送到本镇某团员家，其他人去取\n   - 用户选择镇子\n   - 配送费由团长设定（通常较低或免费）\n   - 需要有人报名「本周我家收货」\n   - 无人报名时该镇不可选此方式\n\n2. 固定取货点：送到 2 个固定取货点之一\n   - 用户选择取货点\n   - 配送费由团长设定\n\n3. 直送到家：送到家门口\n   - 用户选择镇子（计算运费）+ 填写详细地址\n   - 配送费 $0-$10，根据距离远近\n   - 有最低免运费金额门槛\n   - 可从常用地址中选择\n\n约 10+ 个固定城镇，每个镇配置：名称（中英文）、默认配送费、距离等级",
                 pains: [],
                 keeps: [],
                 questions: [
-                  { text: "是否有其他配送方式的需求？", resolved: false }
+                  { text: "固定取货点的具体位置？", resolved: false },
+                  { text: "各镇配送费的具体数字？", resolved: false },
+                  { text: "免运费门槛金额？", resolved: false },
+                  { text: "是否有其他配送方式的需求？比如某些商品只能自取？", resolved: false }
                 ]
               }
             },
             {
-              id: "feedback",
-              colIdx: 5, spanDays: 1,
-              icon: "评", title: "评价反馈",
-              desc: "提交商品评价和反馈图片",
+              id: "feedback", colIdx: 5, spanDays: 1,
+              title: "评价反馈", desc: "提交商品评价和反馈图片",
               role: "user", roleLabel: "团员",
               style: "dashed",
               details: {
-                known: "-- 团员可提交文字+图片评价\n-- 评价状态为 pending，团长审核后展示\n-- 已批准的评价显示在商品详情页",
+                known: "-- 团员可提交文字+图片评价\n-- 评价状态为 pending，团长审核后展示\n-- 只有已批准的评价显示在商品详情页\n-- 团长可在管理后台查看全部评价，批准/拒绝",
                 pains: [],
                 keeps: [],
                 questions: [
@@ -1489,14 +1467,117 @@ const DEFAULT_DATA = {
   nonWeeklyTasks: [
     {
       id: "reconciliation",
-      icon: "对",
       title: "对账",
       desc: "核对 Venmo 收款记录与系统账单",
-      role: "admin",
-      roleLabel: "团长",
+      role: "admin", roleLabel: "团长",
       cadence: "每周",
       details: {
-        known: "",
+        known: "-- 团长对照 Venmo 收款记录，逐一确认每个团员是否已付款\n-- 在后台标记「已付款」\n-- 未付款的团员需要催款\n-- Phase 3 计划通过 Venmo API 或截图识别实现半自动对账",
+        pains: [
+          { text: "人工逐条核对 Venmo 记录，耗时且容易遗漏", priority: "P0", note: "" }
+        ],
+        keeps: [],
+        questions: [
+          { text: "每周大约需要多长时间对账？", resolved: false }
+        ]
+      }
+    },
+    {
+      id: "product-mgmt",
+      title: "商品库管理",
+      desc: "维护商品信息、上下架、分类管理",
+      role: "admin", roleLabel: "团长",
+      cadence: "按需",
+      details: {
+        known: "-- 所有历史上架过的商品形成持久化的「商品库」\n-- 每周开团时从商品库中搜索、选择，快速上架\n-- 可一键复制上周商品列表\n-- 可新增全新商品到商品库\n-- 商品库支持按名称/分类搜索\n-- 商品可停用/删除，停用后首页不显示\n-- 每个商品可单独调整本周价格/库存（覆盖商品库默认值）",
+        pains: [],
+        keeps: [],
+        questions: []
+      }
+    },
+    {
+      id: "delivery-config",
+      title: "配送方式管理",
+      desc: "管理城镇列表、取货点、配送费",
+      role: "admin", roleLabel: "团长",
+      cadence: "按需",
+      details: {
+        known: "-- 城镇列表管理：增删改，约 10+ 个固定城镇\n-- 每个镇配置：名称（中英文）、默认配送费、距离等级\n-- 固定取货点管理：地址、名称\n-- 运费设置：最低免运费金额、各镇配送费\n-- 商品分类管理：增删改分类名",
+        pains: [],
+        keeps: [],
+        questions: [
+          { text: "城镇列表是否经常变动？", resolved: false }
+        ]
+      }
+    },
+    {
+      id: "refund-mgmt",
+      title: "退款处理",
+      desc: "处理缺货/质量问题/取消订单的退款",
+      role: "admin", roleLabel: "团长",
+      cadence: "每周",
+      details: {
+        known: "-- 退款场景：缺货、质量问题、用户取消（团长批准后）\n-- 默认退入用户余额账户，下次下单自动抵扣\n-- 可选：团长通过 Venmo 退款，在后台标记已退\n-- 退款时系统自动增加用户余额\n-- 取消订单（管理员）时库存恢复（sold 减回去）",
+        pains: [],
+        keeps: [],
+        questions: [
+          { text: "退款频率高吗？主要是什么原因？", resolved: false },
+          { text: "团员对余额抵扣的规则是否理解/接受？", resolved: false },
+          { text: "是否需要余额过期机制？", resolved: false }
+        ]
+      }
+    },
+    {
+      id: "balance-mgmt",
+      title: "余额管理",
+      desc: "查看和调整团员账户余额",
+      role: "admin", roleLabel: "团长",
+      cadence: "按需",
+      details: {
+        known: "-- 每个团员有一个余额账户\n-- 退款默认进余额\n-- 下单时如有余额，自动抵扣\n-- 团长可手动调整余额（加/减/清零）\n-- 如 Venmo 退款后需清零余额\n-- 余额变动有完整记录可查（时间、类型、金额+/-、备注）\n-- 团员可在个人中心查看余额和变动记录",
+        pains: [],
+        keeps: [],
+        questions: []
+      }
+    },
+    {
+      id: "volunteer-mgmt",
+      title: "义工管理",
+      desc: "指定每周义工和负责区域",
+      role: "admin", roleLabel: "团长",
+      cadence: "每周",
+      details: {
+        known: "-- 每周由团长指定义工\n-- 义工从团员列表中选择或输入 openId\n-- 分配负责的镇子/区域\n-- 本周义工列表可查看\n-- 义工登录后只能看到自己负责的镇子送货单",
+        pains: [],
+        keeps: [
+          { text: "义工是志愿性质，每周由团长灵活指定", priority: "P0", note: "" }
+        ],
+        questions: [
+          { text: "义工激励机制？如免运费、优先选货？", resolved: false }
+        ]
+      }
+    },
+    {
+      id: "system-config",
+      title: "系统配置",
+      desc: "管理城镇、分类、运费、Venmo、管理员",
+      role: "admin", roleLabel: "团长",
+      cadence: "按需",
+      details: {
+        known: "-- 城镇管理：增删改城镇（中英文名称、配送费）\n-- 固定取货点管理：地址、名称\n-- 商品分类管理：增删改分类名\n-- 运费设置：最低免运费金额、各镇配送费\n-- Venmo 账号信息\n-- 团长管理：添加/移除团长（通过 openId）\n-- 查看团员列表",
+        pains: [],
+        keeps: [],
+        questions: []
+      }
+    },
+    {
+      id: "stats",
+      title: "数据统计",
+      desc: "查看订单、金额、商品、镇子统计",
+      role: "admin", roleLabel: "团长",
+      cadence: "每周",
+      details: {
+        known: "-- 本周概览：总订单数、总金额、已付款金额、未付款金额\n-- 按商品统计：每个商品的总订购量和销售额\n-- 按镇子统计：每个镇子的订单数、金额、团购/直送比例\n-- 按付款状态统计：已付/未付人数和金额\n-- 未付款列表（方便催款）\n-- 导出送货单（PDF/Excel，中英双语）",
         pains: [],
         keeps: [],
         questions: []
