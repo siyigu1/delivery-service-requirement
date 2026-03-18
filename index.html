@@ -148,6 +148,19 @@
     position: relative;
   }
 
+  /* Sticky header row */
+  .sticky-header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg);
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    border-bottom: 1px solid var(--line);
+    margin: 0 -20px;
+    padding: 0 20px;
+  }
+
   /* Day headers */
   .day-header {
     text-align: center;
@@ -355,6 +368,109 @@
 
   .activity.resizing .resize-handle { opacity: 1; }
   .activity.resizing .resize-handle::before { background: var(--admin); }
+
+  /* Metadata fields in panel */
+  .meta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .meta-field { display: flex; flex-direction: column; gap: 4px; }
+  .meta-field.full { grid-column: 1 / -1; }
+
+  .meta-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .meta-input {
+    padding: 8px 10px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text);
+    background: #fafbfc;
+    transition: border-color 0.15s;
+  }
+
+  .meta-input:focus {
+    outline: none;
+    border-color: var(--admin);
+    background: white;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+
+  .meta-select {
+    padding: 8px 10px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text);
+    background: #fafbfc;
+    cursor: pointer;
+  }
+
+  .meta-select:focus {
+    outline: none;
+    border-color: var(--admin);
+  }
+
+  .add-role-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-top: 4px;
+  }
+
+  .add-role-row input {
+    flex: 1;
+    padding: 6px 8px;
+    border: 1.5px dashed var(--line);
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: inherit;
+  }
+
+  .add-role-row input:focus { outline: none; border-color: var(--admin); }
+
+  /* Custom role colors (5th+ roles cycle through these) */
+  .activity.custom0 { background: #fdf2f8; border-color: #fbcfe8; }
+  .custom0 .activity-title { color: #db2777; }
+  .custom0 .activity-role { background: #db2777; color: white; }
+
+  .activity.custom1 { background: #ecfeff; border-color: #a5f3fc; }
+  .custom1 .activity-title { color: #0891b2; }
+  .custom1 .activity-role { background: #0891b2; color: white; }
+
+  .activity.custom2 { background: #fefce8; border-color: #fde047; }
+  .custom2 .activity-title { color: #a16207; }
+  .custom2 .activity-role { background: #a16207; color: white; }
+
+  .activity.custom3 { background: #f0fdfa; border-color: #99f6e4; }
+  .custom3 .activity-title { color: #0d9488; }
+  .custom3 .activity-role { background: #0d9488; color: white; }
+
+  .nw-card.custom0 { background: #fdf2f8; border-color: #fbcfe8; }
+  .nw-card.custom0 .nw-card-title { color: #db2777; }
+  .nw-card.custom0 .nw-card-role { background: #db2777; color: white; }
+
+  .nw-card.custom1 { background: #ecfeff; border-color: #a5f3fc; }
+  .nw-card.custom1 .nw-card-title { color: #0891b2; }
+  .nw-card.custom1 .nw-card-role { background: #0891b2; color: white; }
+
+  .nw-card.custom2 { background: #fefce8; border-color: #fde047; }
+  .nw-card.custom2 .nw-card-title { color: #a16207; }
+  .nw-card.custom2 .nw-card-role { background: #a16207; color: white; }
+
+  .nw-card.custom3 { background: #f0fdfa; border-color: #99f6e4; }
+  .nw-card.custom3 .nw-card-title { color: #0d9488; }
+  .nw-card.custom3 .nw-card-role { background: #0d9488; color: white; }
 
   /* Day column drop targets (rendered in add-step row) */
   .add-step-row {
@@ -893,13 +1009,9 @@
   </div>
   <p class="subtitle">点击卡片查看/编辑详情 -- 拖拽卡片调整位置 -- 多人实时同步</p>
 
-  <div class="legend">
-    <div class="legend-item"><div class="legend-dot" style="background:var(--admin)"></div><span>团长（管理员）</span></div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--user)"></div><span>团员（用户）</span></div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--volunteer)"></div><span>义工（配送）</span></div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--supplier)"></div><span>货源（供应商）</span></div>
-  </div>
+  <div class="legend" id="legendContainer"></div>
 
+  <div class="sticky-header" id="stickyHeader"></div>
   <div class="timeline" id="timeline"></div>
 
   <div class="non-weekly-section" id="nonWeeklySection"></div>
@@ -920,6 +1032,7 @@
   </div>
   <div class="panel-body" id="panelBody"></div>
   <div class="panel-footer">
+    <button class="btn danger" id="panelDeleteBtn" onclick="deleteCurrentCard()" style="flex-shrink:0">删除</button>
     <button class="btn primary" onclick="closePanel()" style="flex:1">完成</button>
   </div>
 </div>
@@ -1230,6 +1343,12 @@ const DEFAULT_DATA = {
       ]
     }
   ],
+  roles: [
+    { id: "admin", label: "团长", color: "admin" },
+    { id: "user", label: "团员", color: "user" },
+    { id: "volunteer", label: "义工", color: "volunteer" },
+    { id: "supplier", label: "货源", color: "supplier" }
+  ],
   nonWeeklyTasks: [
     {
       id: "reconciliation",
@@ -1325,6 +1444,7 @@ function initFirebase() {
 
     render();
     renderNonWeekly();
+    renderLegend();
 
     // Re-render panel if open
     if (selectedCardId) {
@@ -1448,13 +1568,15 @@ function render() {
   var tl = document.getElementById("timeline");
   var html = "";
 
-  DAY_LABELS.forEach(function(d) {
-    html += '<div class="day-header"><div class="day-label">' + d.en + '</div><div class="day-name">' + d.zh + '</div></div>';
-  });
-
-  html += '<div class="connector-row">';
-  for (var i = 0; i < 7; i++) html += '<div class="connector-dot"></div>';
-  html += '</div>';
+  // Day headers are rendered in the sticky container outside the timeline
+  var stickyEl = document.getElementById('stickyHeader');
+  if (stickyEl) {
+    var stickyHtml = '';
+    DAY_LABELS.forEach(function(d) {
+      stickyHtml += '<div class="day-header"><div class="day-label">' + d.en + '</div><div class="day-name">' + d.zh + '</div></div>';
+    });
+    stickyEl.innerHTML = stickyHtml;
+  }
 
   data.phases.forEach(function(phase) {
     html += '<div class="phase-row"><div class="phase-line"></div><div class="phase-label">' + phase.label + '</div><div class="phase-line"></div></div>';
@@ -1469,7 +1591,8 @@ function render() {
 
       // Render phase grid
       html += '<div class="phase-grid" data-phase="' + phase.id + '" data-row="' + rowIdx + '"'
-            + ' style="grid-template-rows: repeat(' + (maxRow || 1) + ', auto);">';
+            + ' style="grid-template-rows: repeat(' + (maxRow || 1) + ', auto);"'
+            + ' ondragover="onGridDragOver(event)" ondrop="onGridDrop(event)">';
 
       allocations.forEach(function(a) {
         var card = a.card;
@@ -1480,7 +1603,8 @@ function render() {
 
         var gridStyle = 'grid-column: ' + a.gridCol + ' / span ' + a.gridSpan + '; grid-row: ' + a.gridRow + ';';
 
-        html += '<div class="activity ' + card.role + (isSelected ? ' selected' : '') + '"'
+        var roleClass = getRoleColorClass(card.role);
+        html += '<div class="activity ' + roleClass + (isSelected ? ' selected' : '') + '"'
               + ' style="' + borderStyle + gridStyle + '"'
               + ' draggable="true" data-card-id="' + card.id + '"'
               + ' data-phase="' + phase.id + '" data-row="' + rowIdx + '"'
@@ -1534,7 +1658,8 @@ function renderNonWeekly() {
 
   tasks.forEach(function(task) {
     var isSelected = selectedCardId === task.id;
-    html += '<div class="nw-card ' + task.role + (isSelected ? ' selected' : '') + '" onclick="openPanel(\'' + task.id + '\')">'
+    var nwRoleClass = getRoleColorClass(task.role);
+    html += '<div class="nw-card ' + nwRoleClass + (isSelected ? ' selected' : '') + '" onclick="openPanel(\'' + task.id + '\')">'
           + '<div class="nw-card-title">' + task.title + '</div>'
           + '<div class="nw-card-desc">' + task.desc + '</div>'
           + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
@@ -1592,8 +1717,50 @@ function closePanel() {
 function renderPanelBody(card) {
   var body = document.getElementById("panelBody");
   var d = card.details || { known: "", pains: [], keeps: [], questions: [] };
+  var isNonWeekly = !!findNonWeeklyCard(card.id);
+  var roles = (data && data.roles) || [
+    { id: "admin", label: "团长" },
+    { id: "user", label: "团员" },
+    { id: "volunteer", label: "义工" },
+    { id: "supplier", label: "货源" }
+  ];
   var html = "";
 
+  // Metadata section
+  html += '<div class="panel-section">'
+       + '<div class="panel-section-header">'
+       + '<div class="panel-section-title"><span class="section-tag known">[基本]</span> 基本信息</div>'
+       + '</div>'
+       + '<div class="meta-grid">'
+       + '<div class="meta-field full">'
+       + '<div class="meta-label">名称</div>'
+       + '<input class="meta-input" type="text" value="' + escapeHtml(card.title) + '" oninput="updateCardMeta(\'' + card.id + '\', \'title\', this.value)">'
+       + '</div>'
+       + '<div class="meta-field full">'
+       + '<div class="meta-label">描述</div>'
+       + '<input class="meta-input" type="text" value="' + escapeHtml(card.desc) + '" placeholder="简要描述..." oninput="updateCardMeta(\'' + card.id + '\', \'desc\', this.value)">'
+       + '</div>'
+       + '<div class="meta-field">'
+       + '<div class="meta-label">负责人</div>'
+       + '<select class="meta-select" onchange="updateCardRole(\'' + card.id + '\', this.value)">';
+  roles.forEach(function(r) {
+    html += '<option value="' + r.id + '" ' + (card.role === r.id ? 'selected' : '') + '>' + r.label + '</option>';
+  });
+  html += '</select>'
+       + '<div class="add-role-row">'
+       + '<input type="text" id="newRoleInput" placeholder="添加新角色...">'
+       + '<button class="add-btn" onclick="addNewRole()">+</button>'
+       + '</div>'
+       + '</div>';
+  if (isNonWeekly) {
+    html += '<div class="meta-field">'
+         + '<div class="meta-label">频率</div>'
+         + '<input class="meta-input" type="text" value="' + escapeHtml(card.cadence || '') + '" placeholder="如：每周、每月、按需" oninput="updateCardMeta(\'' + card.id + '\', \'cadence\', this.value)">'
+         + '</div>';
+  }
+  html += '</div></div>';
+
+  // Known info
   html += '<div class="panel-section">'
        + '<div class="panel-section-header">'
        + '<div class="panel-section-title"><span class="section-tag known">[已知]</span> 已知信息</div>'
@@ -1842,6 +2009,130 @@ function addNonWeeklyTask() {
 }
 
 // ============================
+// CARD METADATA
+// ============================
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function updateCardMeta(cardId, field, value) {
+  var card = findCard(cardId) || findNonWeeklyCard(cardId);
+  if (!card) return;
+  card[field] = value;
+  // Update panel header in real time
+  if (field === 'title') document.getElementById("panelTitle").textContent = value;
+  if (field === 'desc') document.getElementById("panelSubtitle").textContent = value;
+  save();
+  render();
+  renderNonWeekly();
+}
+
+function updateCardRole(cardId, roleId) {
+  var card = findCard(cardId) || findNonWeeklyCard(cardId);
+  if (!card) return;
+  var roles = (data && data.roles) || [];
+  var role = roles.find(function(r) { return r.id === roleId; });
+  if (role) {
+    card.role = role.id;
+    card.roleLabel = role.label;
+  }
+  save();
+  render();
+  renderNonWeekly();
+  // Update panel header icon color
+  var iconEl = document.getElementById("panelIcon");
+  if (iconEl) iconEl.className = 'panel-header-icon ' + card.role;
+}
+
+function getRoleColorClass(roleId) {
+  var builtIn = ['admin', 'user', 'volunteer', 'supplier'];
+  var idx = builtIn.indexOf(roleId);
+  if (idx >= 0) return roleId;
+  // Custom roles get cycling color classes
+  var roles = (data && data.roles) || [];
+  var customIdx = 0;
+  for (var i = 0; i < roles.length; i++) {
+    if (builtIn.indexOf(roles[i].id) >= 0) continue;
+    if (roles[i].id === roleId) return 'custom' + (customIdx % 4);
+    customIdx++;
+  }
+  return 'custom0';
+}
+
+function addNewRole() {
+  var input = document.getElementById('newRoleInput');
+  if (!input || !input.value.trim()) return;
+  var label = input.value.trim();
+  var id = 'role-' + Date.now();
+  if (!data.roles) data.roles = [];
+  data.roles.push({ id: id, label: label, color: id });
+  save();
+  // Re-render panel to show new role in dropdown
+  var card = findCard(selectedCardId) || findNonWeeklyCard(selectedCardId);
+  if (card) renderPanelBody(card);
+  renderLegend();
+  showToast("已添加角色「" + label + "」");
+}
+
+// ============================
+// DELETE CARD
+// ============================
+function deleteCurrentCard() {
+  if (!selectedCardId) return;
+  var card = findCard(selectedCardId) || findNonWeeklyCard(selectedCardId);
+  if (!card) return;
+  if (!confirm("确定要删除「" + card.title + "」吗？")) return;
+
+  // Try removing from phases
+  var loc = findCardLocation(selectedCardId);
+  if (loc) {
+    loc.row.cards.splice(loc.cardIdx, 1);
+  } else {
+    // Try non-weekly
+    var nwTasks = data.nonWeeklyTasks || [];
+    for (var i = 0; i < nwTasks.length; i++) {
+      if (nwTasks[i].id === selectedCardId) {
+        nwTasks.splice(i, 1);
+        break;
+      }
+    }
+  }
+
+  closePanel();
+  save();
+  render();
+  renderNonWeekly();
+  showToast("已删除「" + card.title + "」");
+}
+
+// ============================
+// LEGEND
+// ============================
+function renderLegend() {
+  var container = document.getElementById('legendContainer');
+  if (!container || !data) return;
+  var roles = data.roles || [];
+  var html = '';
+  roles.forEach(function(r) {
+    var colorClass = getRoleColorClass(r.id);
+    var builtIn = ['admin', 'user', 'volunteer', 'supplier'];
+    var colorVar = builtIn.indexOf(r.id) >= 0 ? 'var(--' + r.id + ')' : '';
+    if (!colorVar) {
+      // Use the custom color
+      var tempDiv = document.createElement('div');
+      tempDiv.className = 'activity ' + colorClass;
+      tempDiv.style.display = 'none';
+      document.body.appendChild(tempDiv);
+      colorVar = getComputedStyle(tempDiv).borderColor;
+      document.body.removeChild(tempDiv);
+    }
+    html += '<div class="legend-item"><div class="legend-dot" style="background:' + (builtIn.indexOf(r.id) >= 0 ? 'var(--' + r.id + ')' : '') + '" class="legend-dot-' + colorClass + '"></div><span>' + r.label + '</span></div>';
+  });
+  container.innerHTML = html;
+}
+
+// ============================
 // DRAG AND DROP
 // ============================
 var dropTargetInfo = null;
@@ -1887,6 +2178,58 @@ function onDragLeave(e) {
 
 function clearPlaceholder() {
   document.querySelectorAll('.drop-placeholder').forEach(function(el) { el.remove(); });
+}
+
+function onGridDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  if (!dragSourceInfo) return;
+
+  var gridEl = e.currentTarget;
+  var gridRect = gridEl.getBoundingClientRect();
+  var colWidth = gridRect.width / 7;
+  var mouseRelX = e.clientX - gridRect.left;
+  var colIdx = Math.floor(mouseRelX / colWidth);
+  if (colIdx < 0) colIdx = 0;
+  if (colIdx > 6) colIdx = 6;
+
+  var phaseId = gridEl.dataset.phase;
+  var rowIdx = parseInt(gridEl.dataset.row);
+  dropTargetInfo = { phaseId: phaseId, rowIdx: rowIdx, colIdx: colIdx };
+}
+
+function onGridDrop(e) {
+  e.preventDefault();
+  if (!dragSourceInfo || !dropTargetInfo) return;
+
+  var tgtPhaseId = dropTargetInfo.phaseId;
+  var tgtRowIdx = dropTargetInfo.rowIdx;
+  var tgtColIdx = dropTargetInfo.colIdx;
+
+  var srcPhase = data.phases.find(function(p) { return p.id === dragSourceInfo.phaseId; });
+  var srcRow = srcPhase.rows[dragSourceInfo.rowIdx];
+  var srcCards = srcRow.cards || [];
+  var srcIdx = -1;
+  for (var i = 0; i < srcCards.length; i++) {
+    if (srcCards[i].id === dragSourceInfo.cardId) { srcIdx = i; break; }
+  }
+  if (srcIdx === -1) return;
+
+  var card = srcCards.splice(srcIdx, 1)[0];
+  card.colIdx = tgtColIdx;
+  if (card.colIdx + card.spanDays > 7) {
+    card.spanDays = 7 - card.colIdx;
+  }
+
+  var tgtPhase = data.phases.find(function(p) { return p.id === tgtPhaseId; });
+  var tgtRow = tgtPhase.rows[tgtRowIdx];
+  if (!tgtRow.cards) tgtRow.cards = [];
+  tgtRow.cards.push(card);
+
+  dragSourceInfo = null;
+  dropTargetInfo = null;
+  save(); render(); renderNonWeekly();
+  showToast("已移动「" + card.title + "」");
 }
 
 function onDrop(e) {
