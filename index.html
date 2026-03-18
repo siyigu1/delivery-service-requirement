@@ -1413,6 +1413,7 @@ function render() {
                   + ' draggable="true" data-card-id="' + card.id + '"'
                   + ' onclick="openPanel(\'' + card.id + '\')"'
                   + ' ondragstart="onDragStart(event, \'' + phase.id + '\', ' + rowIdx + ', ' + colIdx + ', ' + cardIdx + ')"'
+                  + ' ondragover="onCardDragOver(event)" ondragleave="onCardDragLeave(event)" ondrop="onCardDrop(event, \'' + phase.id + '\', ' + rowIdx + ', ' + colIdx + ', ' + cardIdx + ')"'
                   + ' ondragend="onDragEnd(event)">'
                   + '<div class="drag-handle">///</div>'
                   + '<div class="activity-icon">' + (card.icon || card.title.charAt(0)) + '</div>'
@@ -1789,7 +1790,64 @@ function onDrop(e) {
 
   var tgtPhase = data.phases.find(function(p) { return p.id === tgtPhaseId; });
   if (!tgtPhase.rows[tgtRowIdx].columns[tgtColIdx]) tgtPhase.rows[tgtRowIdx].columns[tgtColIdx] = [];
+  // Drop on column background = append to end
   tgtPhase.rows[tgtRowIdx].columns[tgtColIdx].push(card);
+
+  dragSourceInfo = null;
+  save(); render(); renderNonWeekly();
+  showToast("已移动「" + card.title + "」");
+}
+
+function onCardDragOver(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  e.dataTransfer.dropEffect = 'move';
+  var card = e.currentTarget;
+  var rect = card.getBoundingClientRect();
+  var midY = rect.top + rect.height / 2;
+  // Show visual indicator for drop position
+  card.style.borderTop = e.clientY < midY ? '3px solid var(--admin)' : '';
+  card.style.borderBottom = e.clientY >= midY ? '3px solid var(--admin)' : '';
+}
+
+function onCardDragLeave(e) {
+  e.currentTarget.style.borderTop = '';
+  e.currentTarget.style.borderBottom = '';
+}
+
+function onCardDrop(e, tgtPhaseId, tgtRowIdx, tgtColIdx, tgtCardIdx) {
+  e.preventDefault();
+  e.stopPropagation();
+  e.currentTarget.style.borderTop = '';
+  e.currentTarget.style.borderBottom = '';
+  document.querySelectorAll('.day-column').forEach(function(el) { el.classList.remove('drag-over'); });
+  if (!dragSourceInfo) return;
+
+  // Determine insert position based on mouse position
+  var rect = e.currentTarget.getBoundingClientRect();
+  var insertBefore = e.clientY < (rect.top + rect.height / 2);
+
+  var srcPhase = data.phases.find(function(p) { return p.id === dragSourceInfo.phaseId; });
+  var srcCol = srcPhase.rows[dragSourceInfo.rowIdx].columns[dragSourceInfo.colIdx];
+
+  var tgtPhase = data.phases.find(function(p) { return p.id === tgtPhaseId; });
+  if (!tgtPhase.rows[tgtRowIdx].columns[tgtColIdx]) tgtPhase.rows[tgtRowIdx].columns[tgtColIdx] = [];
+  var tgtCol = tgtPhase.rows[tgtRowIdx].columns[tgtColIdx];
+
+  // Same column reorder
+  var sameCol = (dragSourceInfo.phaseId === tgtPhaseId &&
+                 dragSourceInfo.rowIdx === tgtRowIdx &&
+                 dragSourceInfo.colIdx === tgtColIdx);
+
+  var card = srcCol.splice(dragSourceInfo.cardIdx, 1)[0];
+
+  // Adjust target index if same column and source was before target
+  var insertIdx = insertBefore ? tgtCardIdx : tgtCardIdx + 1;
+  if (sameCol && dragSourceInfo.cardIdx < tgtCardIdx) {
+    insertIdx--;
+  }
+
+  tgtCol.splice(insertIdx, 0, card);
 
   dragSourceInfo = null;
   save(); render(); renderNonWeekly();
